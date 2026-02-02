@@ -1,4 +1,4 @@
-package com.example.edps.infra.kafka;
+package com.example.edps.infra.kafka.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

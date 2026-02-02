@@ -1,13 +1,12 @@
 package com.example.edps.infra.kafka.producer;
 
-import com.example.edps.domain.payment.event.EventEnvelope;
+import com.example.edps.infra.kafka.message.EventEnvelope;
 import com.example.edps.domain.payment.event.PaymentRequestedCommand;
 import com.example.edps.infra.kafka.KafkaTopics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Component

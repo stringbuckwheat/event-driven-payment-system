@@ -1,4 +1,4 @@
-package com.example.edps.domain.payment.event;
+package com.example.edps.infra.kafka.message;
 
 import java.time.Instant;
 import java.util.UUID;

@@ -1,6 +1,6 @@
 package com.example.edps.infra.kafka.consumer;
 
-import com.example.edps.domain.payment.event.EventEnvelope;
+import com.example.edps.infra.kafka.message.EventEnvelope;
 import com.example.edps.domain.payment.event.PaymentRequestedCommand;
 import com.example.edps.infra.kafka.KafkaTopics;
 import lombok.RequiredArgsConstructor;
