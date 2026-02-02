@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.redis.core.RedisHash;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -11,6 +12,7 @@ import java.util.Map;
 // TODO save 후에 expire 갱신 추가 고려
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@RedisHash("cart")
 public class Cart {
     @Id
     private String userId;
