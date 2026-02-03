@@ -7,9 +7,16 @@ public record PaymentRequestedCommand(
         Long orderId,
         Long paymentId,
         String userId,
-        int total
+        int total,
+        String scenario
 ) {
-    public static PaymentRequestedCommand from(Order order) {
-        return new PaymentRequestedCommand(order.getId(), order.getPayment().getId(), order.getUserId(), order.getTotal());
+    public static PaymentRequestedCommand from(Order order, String scenario) {
+        return new PaymentRequestedCommand(
+                order.getId(),
+                order.getPayment().getId(),
+                order.getUserId(),
+                order.getTotal(),
+                scenario
+        );
     }
 }

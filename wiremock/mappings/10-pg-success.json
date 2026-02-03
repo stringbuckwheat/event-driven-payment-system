@@ -1,0 +1,15 @@
+{
+  "priority": 10,
+  "request": {
+    "method": "POST",
+    "url": "/pg/payments"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "result": "SUCCESS",
+      "pgPaymentId": "PG-OK-0001"
+    }
+  }
+}

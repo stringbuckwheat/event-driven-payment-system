@@ -20,6 +20,15 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+  wiremock:
+    image: wiremock/wiremock:3.3.1
+    container_name: mock-pg
+    ports:
+      - "9099:8080"
+    volumes:
+      - ./wiremock:/home/wiremock
+    command:
+      - --verbose
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest

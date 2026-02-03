@@ -1,0 +1,19 @@
+{
+  "priority": 2,
+  "request": {
+    "method": "POST",
+    "url": "/pg/payments",
+    "headers": {
+      "X-MOCK-SCENARIO": { "equalTo": "DELAY" }
+    }
+  },
+  "response": {
+    "fixedDelayMilliseconds": 5000,
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "result": "SUCCESS",
+      "pgPaymentId": "PG-DELAY-0001"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "url": "/pg/payments",
+    "headers": {
+      "X-MOCK-SCENARIO": { "equalTo": "FAIL" }
+    }
+  },
+  "response": {
+    "status": 400,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "result": "FAIL",
+      "reason": "MOCK_FORCED_FAIL"
+    }
+  }
+}

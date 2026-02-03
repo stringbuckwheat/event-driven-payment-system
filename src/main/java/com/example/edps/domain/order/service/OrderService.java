@@ -87,7 +87,8 @@ public class OrderService {
         order.attachPayment(payment);
         paymentRepository.save(payment);
 
-        return PaymentRequestedCommand.from(order);
+        String scenario = "";
+        return PaymentRequestedCommand.from(order, scenario);
     }
 
     private void acquirePaymentProcessing(Long paymentId) {
