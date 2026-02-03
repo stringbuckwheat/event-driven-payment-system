@@ -1,7 +1,7 @@
-package com.example.edps.domain.order.repository;
+package com.example.edps.domain.payment.repository;
 
-import com.example.edps.domain.order.entity.Payment;
-import com.example.edps.domain.order.enums.PayStatus;
+import com.example.edps.domain.payment.entity.Payment;
+import com.example.edps.domain.payment.enums.PayStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

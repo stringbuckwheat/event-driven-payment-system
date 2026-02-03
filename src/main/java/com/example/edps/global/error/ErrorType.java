@@ -9,6 +9,9 @@ public enum ErrorType {
     // NOT FOUND
     PRODUCT_NOT_FOUND("상품을 찾을 수 없어요"),
     OUTBOX_NOT_FOUND("주문 과정 중 문제 발생"),
+    PAYMENT_NOT_FOUND("결제 내역을 찾을 수 없어요"),
+    ORDER_NOT_FOUND("주문 내역을 찾을 수 없어요"),
+    CART_NOT_FOUND("카트를 찾을 수 없어요"),
 
     // 주문 생성
     EMPTY_CART("장바구니가 비었어요"),

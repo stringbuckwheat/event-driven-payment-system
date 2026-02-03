@@ -1,6 +1,7 @@
-package com.example.edps.domain.order.entity;
+package com.example.edps.domain.payment.entity;
 
-import com.example.edps.domain.order.enums.PayStatus;
+import com.example.edps.domain.order.entity.Order;
+import com.example.edps.domain.payment.enums.PayStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

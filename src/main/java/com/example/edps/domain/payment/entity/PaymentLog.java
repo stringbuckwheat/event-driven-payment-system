@@ -1,6 +1,6 @@
-package com.example.edps.domain.order.entity;
+package com.example.edps.domain.payment.entity;
 
-import com.example.edps.domain.order.enums.PayStatus;
+import com.example.edps.domain.payment.enums.PayStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -23,36 +23,29 @@ public class PaymentLog {
     @ManyToOne(fetch = FetchType.LAZY)
     private Payment payment;
 
-    // 요청 시각
-    private LocalDateTime requestedAt;
+    private Integer attemptNo; // 재시도 몇 번째인지
 
-    // 응답 시각
+    private LocalDateTime requestedAt;
     private LocalDateTime respondedAt;
 
-    // 외부 결제 endpoint
-    private String requestUri;
-
-    private String requestBody;
-
-    private String responseBody;
-
-    // 이 시도의 성공/실패
     @Enumerated(EnumType.STRING)
     private PayStatus status;
 
     private String failureReason;
 
+    private Integer httpStatus;
+
     @Builder
-    public PaymentLog(String pgTxId, LocalDateTime requestedAt, LocalDateTime respondedAt, String requestUri,
-                      String requestBody, String responseBody, PayStatus status, String failureReason) {
+    public PaymentLog(String pgTxId, Integer attemptNo,
+                      LocalDateTime requestedAt, LocalDateTime respondedAt,
+                      PayStatus status, String failureReason,
+                      Integer httpStatus) {
         this.pgTxId = pgTxId;
+        this.attemptNo = attemptNo;
         this.requestedAt = requestedAt;
         this.respondedAt = respondedAt;
-        this.requestUri = requestUri;
-        this.requestBody = requestBody;
-        this.responseBody = responseBody;
         this.status = status;
         this.failureReason = failureReason;
+        this.httpStatus = httpStatus;
     }
 }
-

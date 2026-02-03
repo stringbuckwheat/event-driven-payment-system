@@ -1,4 +1,4 @@
-package com.example.edps.domain.order.enums;
+package com.example.edps.domain.payment.enums;
 
 public enum PayStatus {
     READY,
