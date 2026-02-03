@@ -64,11 +64,6 @@ public class OrderService {
         List<Long> productIds = new ArrayList<>(items.keySet());
         List<Product> products = productRepository.findAllByIdIn(productIds);
 
-        if (products.size() != productIds.size()) {
-            // 장바구니에 있는데 상품이 없는 케이스(삭제/비공개 등)
-            throw new ElementNotFoundException(ErrorType.PRODUCT_NOT_FOUND, "some products missing, userId=" + userId);
-        }
-
         // 재고 차감
         for (Product p : products) {
             int qty = items.get(p.getId());

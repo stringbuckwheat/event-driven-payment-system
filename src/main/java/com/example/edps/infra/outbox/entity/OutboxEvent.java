@@ -78,19 +78,25 @@ public class OutboxEvent {
         return e;
     }
 
+    public void markProcessing() {
+        this.status = OutboxStatus.PROCESSING;
+    }
+
     public void markSent() {
         this.status = OutboxStatus.SENT;
         this.sentAt = Instant.now();
         this.lastError = null;
     }
 
-    public void markFailed(String error) {
-        this.status = OutboxStatus.FAILED;
-        this.lastError = error;
-    }
-
-    public void increaseAttempts(String error) {
+    public void recordFailure(String error, int maxAttempts) {
         this.publishAttempts++;
         this.lastError = error;
+
+        if (this.publishAttempts >= maxAttempts) {
+            this.status = OutboxStatus.FAILED;
+        } else {
+            // 재시도 대상이면 다시 PENDING으로 돌려놓는다
+            this.status = OutboxStatus.PENDING;
+        }
     }
 }

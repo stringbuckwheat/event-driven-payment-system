@@ -18,23 +18,23 @@ import java.util.Map;
 @Configuration
 public class KafkaClientConfig {
     @Bean
-    public ProducerFactory<String, Object> producerFactory(KafkaProperties props) {
+    public ProducerFactory<String, String> producerFactory(KafkaProperties props) {
         Map<String, Object> config = new HashMap<>(props.buildProducerProperties());
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         return new DefaultKafkaProducerFactory<>(config);
     }
 
     @Bean
-    public KafkaTemplate<String, Object> kafkaTemplate(ProducerFactory<String, Object> pf) {
+    public KafkaTemplate<String, String> kafkaTemplate(ProducerFactory<String, String> pf) {
         return new KafkaTemplate<>(pf);
     }
 
     @Bean
-    public ConsumerFactory<String, Object> consumerFactory(KafkaProperties props) {
+    public ConsumerFactory<String, String> consumerFactory(KafkaProperties props) {
         Map<String, Object> config = new HashMap<>(props.buildConsumerProperties());
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JacksonJsonDeserializer.class);
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 
         // 보안 설정(역직렬화 허용 패키지)
         config.put(JacksonJsonDeserializer.TRUSTED_PACKAGES, "com.example.edps.domain.payment.event");
@@ -43,10 +43,10 @@ public class KafkaClientConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(
-            ConsumerFactory<String, Object> cf
+    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
+            ConsumerFactory<String, String> cf
     ) {
-        ConcurrentKafkaListenerContainerFactory<String, Object> f = new ConcurrentKafkaListenerContainerFactory<>();
+        ConcurrentKafkaListenerContainerFactory<String, String> f = new ConcurrentKafkaListenerContainerFactory<>();
         f.setConsumerFactory(cf);
         return f;
     }
