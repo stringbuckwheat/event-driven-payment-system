@@ -53,6 +53,7 @@ public class OrderService {
     }
 
     private PaymentRequestedCommand createOrder(String userId) {
+        log.info("========================= OrderService ========================");
         Cart cart = cartRepository.findById(userId)
                 .orElseThrow(() -> new ElementNotFoundException(ErrorType.EMPTY_CART, "no cart, userId=" + userId));
 
@@ -74,18 +75,17 @@ public class OrderService {
         }
 
         List<OrderItem> orderItems = new ArrayList<>();
+        int total = 0;
 
         for (Product p : products) {
             int qty = items.get(p.getId());
+            total += qty * p.getPrice();
             orderItems.add(new OrderItem(p, qty, p.getPrice()));
         }
 
-        Order order = Order.create(userId, orderItems);
+        Order order = Order.create(userId, orderItems, total);
+        order.attachPayment(new Payment(order));
         orderRepository.save(order);
-
-        Payment payment = new Payment(order);
-        order.attachPayment(payment);
-        paymentRepository.save(payment);
 
         String scenario = "";
         return PaymentRequestedCommand.from(order, scenario);
@@ -95,7 +95,7 @@ public class OrderService {
         int updated = paymentRepository.transitionStatus(
                 paymentId,
                 PayStatus.READY,
-                PayStatus.PROCESSING
+                PayStatus.REQUESTED
         );
 
         // 선점 실패면 이미 진행중인 결제 -> PG 호출 금지

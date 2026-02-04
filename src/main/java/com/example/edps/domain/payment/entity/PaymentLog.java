@@ -31,6 +31,7 @@ public class PaymentLog {
     @Enumerated(EnumType.STRING)
     private PayStatus status;
 
+    @Column(columnDefinition = "TEXT")
     private String failureReason;
 
     private Integer httpStatus;

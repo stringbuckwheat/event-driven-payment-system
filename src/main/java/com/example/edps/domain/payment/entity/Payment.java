@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
@@ -49,6 +50,9 @@ public class Payment {
     @OneToMany(mappedBy = "payment", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PaymentLog> paymentLogs = new ArrayList<>();
 
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
+
     @CreatedDate
     private LocalDateTime createdAt;
 
@@ -56,13 +60,6 @@ public class Payment {
         this.total = order.getTotal();
         this.order = order;
         this.status = PayStatus.READY;
-    }
-
-    // 테스트용 생성자
-    public Payment(int total, Order order, PayStatus status) {
-        this.total = total;
-        this.order = order;
-        this.status = status;
     }
 
     public void addLog(PaymentLog log) {

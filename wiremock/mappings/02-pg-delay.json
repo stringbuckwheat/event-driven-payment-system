@@ -13,7 +13,7 @@
     "headers": { "Content-Type": "application/json" },
     "jsonBody": {
       "result": "SUCCESS",
-      "pgPaymentId": "PG-DELAY-0001"
+      "pgTxId": "PG-DELAY-0001"
     }
   }
 }

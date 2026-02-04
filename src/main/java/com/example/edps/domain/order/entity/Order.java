@@ -47,10 +47,11 @@ public class Order {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    public static Order create(String userId, List<OrderItem> items) {
+    public static Order create(String userId, List<OrderItem> items, int total) {
         Order order = new Order();
         order.userId = userId;
         order.status = OrderStatus.CREATED;
+        order.total = total;
 
         items.forEach(order::addOrderItem);
         return order;
