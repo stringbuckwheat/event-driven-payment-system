@@ -1,7 +1,5 @@
 package com.example.edps.infra.outbox.message;
 
-import com.example.edps.global.error.ErrorType;
-import com.example.edps.global.error.exception.ElementNotFoundException;
 import com.example.edps.infra.outbox.entity.OutboxEvent;
 import com.example.edps.infra.outbox.enums.OutboxStatus;
 import com.example.edps.infra.outbox.repository.OutboxRepository;
@@ -10,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.util.List;
 

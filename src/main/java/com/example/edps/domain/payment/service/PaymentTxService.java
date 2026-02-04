@@ -73,7 +73,7 @@ public class PaymentTxService {
 
         outboxService.save(topic, String.valueOf(cmd.paymentId()), EventEnvelope.of(traceId, topic, event));
 
-        log.info("결제 결과 확정 paymentId={}, status={}, outboxTopic={}", cmd.paymentId(), status, topic);
+        log.info("결제 결과 확정 paymentId={}, status={}, outboxTopic={} / {}원", cmd.paymentId(), status, topic, cmd.total());
     }
 
     @Transactional
