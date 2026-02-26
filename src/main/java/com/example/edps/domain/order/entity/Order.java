@@ -19,9 +19,6 @@ import java.util.List;
 @Getter
 @EntityListeners(AuditingEntityListener.class)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "orders", indexes = {
-        @Index(name = "unique_orders_cart_token", columnList = "cartToken", unique = true)
-})
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -9,6 +9,8 @@ import com.example.edps.domain.payment.repository.PaymentLogRepository;
 import com.example.edps.domain.payment.repository.PaymentRepository;
 import com.example.edps.global.error.ErrorType;
 import com.example.edps.global.error.exception.ElementNotFoundException;
+import com.example.edps.infra.idempotency.ProcessedEvent;
+import com.example.edps.infra.idempotency.ProcessedEventRepository;
 import com.example.edps.infra.kafka.KafkaTopics;
 import com.example.edps.infra.kafka.message.EventEnvelope;
 import com.example.edps.infra.outbox.service.OutboxService;
@@ -26,6 +28,7 @@ public class PaymentTxService {
     private final PaymentRepository paymentRepository;
     private final PaymentLogRepository paymentLogRepository;
     private final OutboxService outboxService;
+    private final ProcessedEventRepository processedEventRepository;
     private final int maxAttempts = 5;
 
     @Transactional
@@ -36,6 +39,7 @@ public class PaymentTxService {
     @Transactional
     public void confirm(PaymentRequestedCommand cmd,
                         String traceId,
+                        String eventId,
                         PayStatus status,
                         String pgTxId,
                         String failureReason,
@@ -73,12 +77,16 @@ public class PaymentTxService {
 
         outboxService.save(topic, String.valueOf(cmd.paymentId()), EventEnvelope.of(traceId, topic, event));
 
+        // 처리 완료 기록 (동일 eventId 재전달 방지)
+        processedEventRepository.save(new ProcessedEvent(eventId));
+
         log.info("결제 결과 확정 paymentId={}, status={}, outboxTopic={} / {}원", cmd.paymentId(), status, topic, cmd.total());
     }
 
     @Transactional
     public void handleTransientTx(PaymentRequestedCommand cmd,
                                   String traceId,
+                                  String eventId,
                                   LocalDateTime requestedAt,
                                   Exception ex) {
 
@@ -121,6 +129,9 @@ public class PaymentTxService {
 
             outboxService.save(KafkaTopics.PAYMENT_EVENT_FAILED, String.valueOf(cmd.paymentId()),
                     EventEnvelope.of(traceId, KafkaTopics.PAYMENT_EVENT_FAILED, failedEvent));
+
+            // 처리 완료 기록 (동일 eventId 재전달 방지)
+            processedEventRepository.save(new ProcessedEvent(eventId));
 
             log.warn("결제 실패(재시도 소진) paymentId={}, attempts={}", cmd.paymentId(), attemptNo);
             return;
