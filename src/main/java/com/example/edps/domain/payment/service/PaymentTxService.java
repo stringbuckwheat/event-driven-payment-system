@@ -33,7 +33,7 @@ public class PaymentTxService {
 
     @Transactional
     public boolean claim(Long paymentId) {
-        return paymentRepository.transitionStatus(paymentId, PayStatus.REQUESTED, PayStatus.PROCESSING) == 1;
+        return paymentRepository.transitionStatus(paymentId, PayStatus.READY, PayStatus.PROCESSING) == 1;
     }
 
     @Transactional

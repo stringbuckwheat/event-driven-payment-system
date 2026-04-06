@@ -28,7 +28,6 @@ public class PaymentCommandHandler {
         // 1) tx1: claim
         boolean claimed = paymentTxService.claim(cmd.paymentId());
         if (!claimed) {
-            // TODO PaymentInProgressException?
             log.info("이미 진행 중이거나 완료된 결제 - skip paymentId={}", cmd.paymentId());
             return;
         }

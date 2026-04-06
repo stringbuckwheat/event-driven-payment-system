@@ -39,16 +39,10 @@ public class OrderService {
 
     @Transactional
     public void order(String userId) {
-        // tx1)
-        // 1. 재고 검증, 각종 validation, Order 생성
+        // tx1) 재고 검증, 각종 validation, Order 생성
         PaymentRequestedCommand command = createOrder(userId);
 
-        // 2. 결제 선점
-        // TODO stuck 처리
-        acquirePaymentProcessing(command.paymentId());
-        log.info("결제 선점 완료");
-
-        // 3. 결제 요청 커맨드를 Outbox에 적재
+        // 결제 요청 커맨드를 Outbox에 적재
         publishPaymentRequestedOutbox(command);
     }
 
@@ -64,21 +58,18 @@ public class OrderService {
 
         List<Long> productIds = new ArrayList<>(items.keySet());
         List<Product> products = productRepository.findAllByIdIn(productIds);
-
-        // 재고 차감
-        for (Product p : products) {
-            int qty = items.get(p.getId());
-            int updated = productRepository.reduceStock(p.getId(), qty);
-            if (updated == 0) {
-                throw new SoldOutException(ErrorType.NOT_ENOUGH_STOCK, p.getId(), qty);
-            }
-        }
-
         List<OrderItem> orderItems = new ArrayList<>();
         int total = 0;
 
         for (Product p : products) {
             int qty = items.get(p.getId());
+
+            // 재고차감
+            int updated = productRepository.reduceStock(p.getId(), qty);
+            if (updated == 0) {
+                throw new SoldOutException(ErrorType.NOT_ENOUGH_STOCK, p.getId(), qty);
+            }
+
             total += qty * p.getPrice();
             orderItems.add(new OrderItem(p, qty, p.getPrice()));
         }
@@ -89,19 +80,6 @@ public class OrderService {
 
         String scenario = "";
         return PaymentRequestedCommand.from(order, scenario);
-    }
-
-    private void acquirePaymentProcessing(Long paymentId) {
-        int updated = paymentRepository.transitionStatus(
-                paymentId,
-                PayStatus.READY,
-                PayStatus.REQUESTED
-        );
-
-        // 선점 실패면 이미 진행중인 결제 -> PG 호출 금지
-        if (updated == 0) {
-            throw new PaymentInProgressException();
-        }
     }
 
     private void publishPaymentRequestedOutbox(PaymentRequestedCommand cmd) {
