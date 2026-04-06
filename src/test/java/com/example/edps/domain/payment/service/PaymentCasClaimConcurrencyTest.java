@@ -30,8 +30,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 결제 워커 claim 동시성 테스트
- * 멀티스레드 환경에서 동일 Payment ID에 대해 단 하나의 워커만 PG 호출을 수행하도록 선점
- * 10개의 워커가 동시에 동일한 paymentId 에 claim을 시도하면 정확히 1개만 성공해야 함
  */
 @DataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -61,8 +59,6 @@ class PaymentCasClaimConcurrencyTest {
             orderRepository.save(order);
 
             Long pid = order.getPayment().getId();
-            paymentRepository.transitionStatus(pid, PayStatus.READY, PayStatus.REQUESTED);
-
             System.out.println("[setUp()] Payment 생성 완료 - id: " + pid + ", 상태: REQUESTED");
             return pid;
         });
@@ -104,7 +100,7 @@ class PaymentCasClaimConcurrencyTest {
 
                     Boolean claimed = txTemplate.execute(s ->
                             paymentRepository.transitionStatus(
-                                    paymentId, PayStatus.REQUESTED, PayStatus.PROCESSING) == 1
+                                    paymentId, PayStatus.READY, PayStatus.PROCESSING) == 1
                     );
 
                     if (Boolean.TRUE.equals(claimed)) {
