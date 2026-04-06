@@ -11,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Instant;
+
 @Service
 @RequiredArgsConstructor
 public class OutboxService {
@@ -22,14 +24,15 @@ public class OutboxService {
         try {
             String json = objectMapper.writeValueAsString(envelope);
 
-            OutboxEvent outbox = OutboxEvent.pending(
-                    envelope.eventId(),
-                    envelope.traceId(),
-                    topic,
-                    envelope.type(),
-                    key,
-                    json
-            );
+            OutboxEvent outbox = OutboxEvent.builder()
+                    .eventId(envelope.eventId())
+                    .traceId(envelope.traceId())
+                    .topic(topic)
+                    .type(envelope.type())
+                    .messageKey(key)
+                    .payloadJson(json)
+                    .createdAt(Instant.now())
+                    .build();
 
             return outboxRepository.save(outbox);
         } catch (JacksonException e) {
