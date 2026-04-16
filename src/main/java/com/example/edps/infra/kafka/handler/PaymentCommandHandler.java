@@ -1,7 +1,8 @@
-package com.example.edps.domain.payment.service;
+package com.example.edps.infra.kafka.handler;
 
 import com.example.edps.domain.payment.enums.PayStatus;
 import com.example.edps.domain.payment.event.PaymentRequestedCommand;
+import com.example.edps.domain.payment.service.PaymentTxService;
 import com.example.edps.global.error.exception.PgBusinessException;
 import com.example.edps.infra.kafka.message.EventEnvelope;
 import com.example.edps.infra.pg.PaymentClient;
@@ -25,7 +26,7 @@ public class PaymentCommandHandler {
         String eventId = envelope.eventId();
         PaymentRequestedCommand cmd = envelope.payload();
 
-        // 1) tx1: claim
+        // 1) 결제 선점
         boolean claimed = paymentTxService.claim(cmd.paymentId());
         if (!claimed) {
             log.info("이미 진행 중이거나 완료된 결제 - skip paymentId={}", cmd.paymentId());

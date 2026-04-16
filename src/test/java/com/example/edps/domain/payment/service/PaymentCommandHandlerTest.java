@@ -5,6 +5,7 @@ import com.example.edps.domain.payment.enums.PayStatus;
 import com.example.edps.domain.payment.event.PaymentRequestedCommand;
 import com.example.edps.global.error.exception.PgBusinessException;
 import com.example.edps.infra.kafka.KafkaTopics;
+import com.example.edps.infra.kafka.handler.PaymentCommandHandler;
 import com.example.edps.infra.kafka.message.EventEnvelope;
 import com.example.edps.infra.pg.PaymentClient;
 import com.example.edps.infra.pg.dto.PgPaymentResponse;
