@@ -36,14 +36,6 @@ public class CartService {
     public CartResponse upsertItem(String userId, Long productId, int quantity) {
         Cart cart = cartRepository.findById(userId).orElseGet(() -> new Cart(userId));
 
-        // quantity <= 0이면 삭제
-        if (quantity <= 0) {
-            cart.removeItem(productId);
-            if (deleteCartIfEmpty(cart)) return CartResponse.empty(userId);
-            cartRepository.save(cart);
-            return createCartResponse(cart);
-        }
-
         if (!productRepository.existsById(productId)) {
             throw new ElementNotFoundException(ErrorType.PRODUCT_NOT_FOUND, "productId=" + productId);
         }
@@ -75,41 +67,51 @@ public class CartService {
     /**
      * 카트 응답 DTO 생성
      *
-     * @param cart
-     * @return
+     * @param cart 대상 장바구니
      */
     private CartResponse createCartResponse(Cart cart) {
-        // 아이템 없으면 빈 응답
-        if (CollectionUtils.isEmpty(cart.getItems())) {
+        List<Long> productIds = new ArrayList<>(cart.getItems().keySet());
+        Map<Long, Product> productMap = productRepository.findAllByIdIn(productIds).stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+
+        // 좀비 데이터 삭제
+        removeDeletedProducts(cart, productMap);
+
+        // 아이템 없으면 빈 카트 응답
+        if (cart.getItems().isEmpty()) {
             return CartResponse.empty(cart.getUserId());
         }
 
-        // productId로 상품 조회해서 응답 구성
-        List<Long> productIds = new ArrayList<>(cart.getItems().keySet());
-        List<Product> products = productRepository.findAllByIdIn(productIds);
-        Map<Long, Product> productMap = products.stream()
-                .collect(Collectors.toMap(Product::getId, p -> p));
+        // 카트 내 상품 DTO
+        List<CartItemResponse> items = cart.getItems().entrySet().stream()
+                .filter(e -> productMap.containsKey(e.getKey()))
+                .map(e -> CartItemResponse.of(productMap.get(e.getKey()), e.getValue()))
+                .toList();
 
-        int total = 0;
-        List<CartItemResponse> items = new ArrayList<>(cart.getItems().size());
+        // 총액
+        int total = items.stream()
+                .filter(item -> !item.soldOut())
+                .mapToInt(CartItemResponse::linePrice)
+                .sum();
 
-        for (Map.Entry<Long, Integer> entry : cart.getItems().entrySet()) {
-            Long productId = entry.getKey();
-            Integer quantity = entry.getValue();
-
-            Product product = productMap.get(productId);
-            if (product == null) continue; // 삭제 상품은 제외
-
-            // 품절은 표시하되 총합에서만 제외
-            if (!product.isSoldOut()) {
-                total += product.getPrice() * quantity;
-            }
-
-            items.add(new CartItemResponse(product, quantity));
-        }
-
-        if (items.isEmpty()) return CartResponse.empty(cart.getUserId());
         return new CartResponse(cart.getUserId(), items, total);
+    }
+
+    /**
+     * 장바구니에서 삭제된 상품 제거
+     * DB에 존재하지 않는 상품을 장바구니에서 제거하고, 장바구니가 비었으면 삭제
+     * @param cart 정리 대상 장바구니
+     * @param productMap db에서조회한 상품 map
+     */
+    private void removeDeletedProducts(Cart cart, Map<Long, Product> productMap) {
+        List<Long> deletedIds = cart.getItems().keySet().stream()
+                .filter(id -> !productMap.containsKey(id))
+                .toList();
+
+        if (deletedIds.isEmpty()) return;
+
+        deletedIds.forEach(cart::removeItem);
+        if (!deleteCartIfEmpty(cart)) cartRepository.save(cart);
     }
 
     private boolean deleteCartIfEmpty(Cart cart) {
