@@ -23,10 +23,9 @@ public class PaymentCommandHandler {
 
     // 오케스트레이션
     public void process(EventEnvelope<PaymentRequestedCommand> envelope) {
-        String eventId = envelope.eventId();
         PaymentRequestedCommand cmd = envelope.payload();
 
-        // 1) 결제 선점
+        // 1) TX1: 결제 선점
         boolean claimed = paymentTxService.claim(cmd.paymentId());
         if (!claimed) {
             log.info("이미 진행 중이거나 완료된 결제 - skip paymentId={}", cmd.paymentId());
@@ -37,19 +36,37 @@ public class PaymentCommandHandler {
 
         try {
             // 2) 트랜잭션 없이 PG 호출
-            PgPaymentResponse res = paymentClient.requestPayment(cmd.paymentId(), cmd.total(), cmd.scenario());
+            PgPaymentResponse res = paymentClient.requestPayment(cmd);
             LocalDateTime respondedAt = LocalDateTime.now();
             PayStatus status = res.isSuccess() ? PayStatus.SUCCESS : PayStatus.FAILED;
 
             // 3) Tx2: 결과 확정 + 로그 + outbox + ProcessedEvent 저장
-            paymentTxService.confirm(cmd, envelope.traceId(), eventId, status, res.pgTxId(), safeReason(res.reason()), requestedAt, respondedAt);
+            paymentTxService.confirm(
+                    cmd,
+                    envelope.traceId(),
+                    envelope.eventId(),
+                    status,
+                    res.pgTxId(),
+                    safeReason(res.reason()),
+                    requestedAt,
+                    respondedAt
+            );
 
         } catch (PgBusinessException be) {
             // 비즈니스 실패: Tx2로 FAILED 확정 + ProcessedEvent 저장
-            paymentTxService.confirm(cmd, envelope.traceId(), eventId, PayStatus.FAILED, null, safeReason(be.getMessage()), requestedAt, LocalDateTime.now());
+            paymentTxService.confirm(
+                    cmd,
+                    envelope.traceId(),
+                    envelope.eventId(),
+                    PayStatus.FAILED,
+                    null,
+                    safeReason(be.getMessage()),
+                    requestedAt,
+                    LocalDateTime.now()
+            );
 
         } catch (RuntimeException ex) {
-            paymentTxService.handleTransientTx(cmd, envelope.traceId(), eventId, requestedAt, ex);
+            paymentTxService.handleTransientTx(cmd, envelope.traceId(), envelope.eventId(), requestedAt, ex);
             throw ex;
         }
     }

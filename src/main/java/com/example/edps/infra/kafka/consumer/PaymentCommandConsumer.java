@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 import static com.example.edps.infra.kafka.KafkaTopics.PAYMENT_COMMAND_REQUESTED;
 
-/* 결제 요청 커맨드 */
+/* 결제 요청 커맨드 수신 */
 @Component
 @RequiredArgsConstructor
 @Slf4j

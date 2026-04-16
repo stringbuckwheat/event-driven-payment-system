@@ -25,61 +25,60 @@ public class PaymentResultTxService {
     private final ProductRepository productRepository;
     private final ProcessedEventRepository processedEventRepository;
 
+    /**
+     * 결제 성공 후처리
+     * @param event
+     * @param eventId
+     */
     @Transactional
-    public void applySuccess(PaymentCompletedEvent result, String eventId) {
-        if (processedEventRepository.existsByEventId(eventId)) {
-            log.info("skip: 이미 처리된 이벤트(중복). eventId={}", eventId);
-            return;
-        }
+    public void applySuccess(PaymentCompletedEvent event, String eventId) {
+        // processedEvent 조회
+        if (isDuplicate(eventId)) return;
 
-        if (result.status() != PayStatus.SUCCESS) {
-            log.info("skip: 결제 성공 아님. eventId={}, paymentId={}, status={}", eventId, result.paymentId(), result.status());
-            return;
-        }
-
-        // 주문 상태 변경
-        Order order = orderRepository.findById(result.orderId())
-                .orElseThrow(() -> new BusinessException(ErrorType.ORDER_NOT_FOUND, "orderId=" + result.orderId()));
+        // 주문 상태 결제 완료로 처리
+        Order order = orderRepository.findById(event.orderId())
+                .orElseThrow(() -> new BusinessException(ErrorType.ORDER_NOT_FOUND, "orderId=" + event.orderId()));
         order.markAsPaid();
+        clearCart(order); // 카트 비우기
 
-        // 성공 후처리
-        afterSuccess(order);
-
-        // 처리 완료 기록
         processedEventRepository.save(new ProcessedEvent(eventId));
+        log.info("결제 성공 처리 완료 orderId={}, paymentId={}", event.orderId(), event.paymentId());
     }
 
     @Transactional
-    public void applyFailure(PaymentCompletedEvent result, String eventId) {
-        if (processedEventRepository.existsByEventId(eventId)) {
-            log.info("skip: 이미 처리된 이벤트(중복). eventId={}", eventId);
-            return;
-        }
+    public void applyFailure(PaymentCompletedEvent event, String eventId) {
+        if (isDuplicate(eventId)) return;
 
-        if (result.status() == PayStatus.SUCCESS) {
-            log.info("skip: 결제 실패 아님. eventId={}, paymentId={}, status={}", eventId, result.paymentId(), result.status());
-            return;
-        }
-
-        // 주문 상태 변경
-        Order order = orderRepository.findById(result.orderId())
-                .orElseThrow(() -> new BusinessException(ErrorType.ORDER_NOT_FOUND, "orderId=" + result.orderId()));
+        Order order = orderRepository.findById(event.orderId())
+                .orElseThrow(() -> new BusinessException(ErrorType.ORDER_NOT_FOUND, "orderId=" + event.orderId()));
         order.markAsFailed();
+        rollbackStock(order);
 
-        // 실패 후처리
-        afterFailure(order);
-
-        // 처리 완료 기록 (unique 제약으로 동시 중복 방지)
         processedEventRepository.save(new ProcessedEvent(eventId));
+        log.info("결제 실패 처리 완료 orderId={}, paymentId={}", event.orderId(), event.paymentId());
     }
 
-    private void afterSuccess(Order order) {
+    private boolean isDuplicate(String eventId) {
+        if (processedEventRepository.existsByEventId(eventId)) {
+            log.info("skip: 이미 처리된 이벤트 eventId={}", eventId);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 결제 성공 후 장바구니 삭제
+     */
+    private void clearCart(Order order) {
         cartRepository.deleteById(order.getUserId());
     }
 
-    private void afterFailure(Order order) {
+    /**
+     * 결제 실패 후 재고 롤백
+     */
+    private void rollbackStock(Order order) {
         order.getOrderItems().forEach(item ->
-                productRepository.increaseStock(item.getProduct().getId(), item.getQuantity()));
+                productRepository.increaseStock(item.getProduct().getId(), item.getQuantity())
+        );
     }
 }
-

@@ -1,6 +1,7 @@
 package com.example.edps.infra.pg;
 
 import com.example.edps.domain.order.enums.PgScenario;
+import com.example.edps.domain.payment.event.PaymentRequestedCommand;
 import com.example.edps.global.error.exception.PgBusinessException;
 import com.example.edps.global.error.exception.PgTransientException;
 import com.example.edps.infra.pg.dto.PgPaymentRequest;
@@ -23,7 +24,13 @@ public class PaymentClient {
         this.webClient = WebClient.builder().baseUrl(baseUrl).build();
     }
 
-    public PgPaymentResponse requestPayment(Long paymentId, int amount, PgScenario scenario) {
+    /**
+     * PG 호출
+     * @param cmd
+     * @return 호출 결과
+     */
+    public PgPaymentResponse requestPayment(PaymentRequestedCommand cmd) {
+        PgScenario scenario = cmd.scenario();
         return webClient.post()
                 .uri("/pg/payments")
                 .headers(h -> {
@@ -31,7 +38,7 @@ public class PaymentClient {
                         h.add("X-MOCK-SCENARIO", scenario.name());
                     }
                 })
-                .bodyValue(new PgPaymentRequest(paymentId, amount))
+                .bodyValue(new PgPaymentRequest(cmd.paymentId(), cmd.total()))
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, res ->
                         res.bodyToMono(String.class)
