@@ -31,7 +31,6 @@ public class Payment {
 
     private int total; // 결제 금액
 
-    @Setter
     @Enumerated(EnumType.STRING)
     private PayStatus status;
 

@@ -34,19 +34,15 @@ public class PaymentLog {
     @Column(columnDefinition = "TEXT")
     private String failureReason;
 
-    private Integer httpStatus;
-
     @Builder
     public PaymentLog(String pgTxId, Integer attemptNo,
                       LocalDateTime requestedAt, LocalDateTime respondedAt,
-                      PayStatus status, String failureReason,
-                      Integer httpStatus) {
+                      PayStatus status, String failureReason) {
         this.pgTxId = pgTxId;
         this.attemptNo = attemptNo;
         this.requestedAt = requestedAt;
         this.respondedAt = respondedAt;
         this.status = status;
         this.failureReason = failureReason;
-        this.httpStatus = httpStatus;
     }
 }

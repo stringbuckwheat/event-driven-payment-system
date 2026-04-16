@@ -108,7 +108,6 @@ public class PaymentTxService {
                         .respondedAt(respondedAt)
                         .status(PayStatus.PROCESSING)
                         .failureReason("TRANSIENT: " + safeMsg(ex))
-                        .httpStatus(null)
                         .build()
         );
 
