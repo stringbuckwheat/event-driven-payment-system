@@ -3,6 +3,7 @@ package com.example.edps.domain.cart.controller;
 import com.example.edps.domain.cart.dto.CartResponse;
 import com.example.edps.domain.cart.dto.UpsertCartItemRequest;
 import com.example.edps.domain.cart.service.CartService;
+import com.example.edps.global.common.AppHeaders;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +19,6 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/cart")
 @Validated
 public class CartController {
-
-    private static final String USER_ID_HEADER = "X-USER-ID";
-
     private final CartService cartService;
 
     /**
@@ -28,7 +26,7 @@ public class CartController {
      * - 품절 상품은 목록에 표시되지만, 총합 금액에서는 제외
      */
     @GetMapping
-    public ResponseEntity<CartResponse> getCart(@RequestHeader(USER_ID_HEADER) String userId) {
+    public ResponseEntity<CartResponse> getCart(@RequestHeader(AppHeaders.USER_ID) String userId) {
         return ResponseEntity.ok(cartService.get(userId));
     }
 
@@ -38,7 +36,7 @@ public class CartController {
      */
     @PutMapping("/items/{id}")
     public ResponseEntity<CartResponse> upsertItem(
-            @RequestHeader(USER_ID_HEADER) String userId,
+            @RequestHeader(AppHeaders.USER_ID) String userId,
             @PathVariable("id") Long productId,
             @RequestBody @Valid UpsertCartItemRequest request
     ) {
@@ -50,7 +48,7 @@ public class CartController {
      */
     @DeleteMapping("/items/{id}")
     public ResponseEntity<CartResponse> removeItem(
-            @RequestHeader(USER_ID_HEADER) String userId,
+            @RequestHeader(AppHeaders.USER_ID) String userId,
             @PathVariable("id") Long productId
     ) {
         return ResponseEntity.ok(cartService.removeItem(userId, productId));
