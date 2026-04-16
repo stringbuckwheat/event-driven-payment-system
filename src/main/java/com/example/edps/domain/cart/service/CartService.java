@@ -10,7 +10,6 @@ import com.example.edps.global.error.ErrorType;
 import com.example.edps.global.error.exception.ElementNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
@@ -24,39 +23,26 @@ public class CartService {
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
 
-    @Transactional(readOnly = true)
     public CartResponse get(String userId) {
-        // 카트 생성 시점: 최소 1개의 상품이 있을 떄
-        Cart cart = cartRepository.findById(userId).orElse(null);
-
-        // 카트나 상품 없으면 빈 dto 리턴
-        if (cart == null || CollectionUtils.isEmpty(cart.getItems())) {
-            return CartResponse.empty(userId);
-        }
-
-        return createCartResponse(cart);
+        return cartRepository.findById(userId)
+                .filter(c -> !CollectionUtils.isEmpty(c.getItems()))
+                .map(this::createCartResponse)
+                .orElseGet(() -> CartResponse.empty(userId));
     }
 
     /**
      * 수량 절대값으로 설정
      */
-    @Transactional
     public CartResponse upsertItem(String userId, Long productId, int quantity) {
-        Cart cart = cartRepository.findById(userId).orElse(null);
+        Cart cart = cartRepository.findById(userId).orElseGet(() -> new Cart(userId));
 
         // quantity <= 0이면 삭제
         if (quantity <= 0) {
-            if (cart == null) return CartResponse.empty(userId);
-
             cart.removeItem(productId);
             if (deleteCartIfEmpty(cart)) return CartResponse.empty(userId);
-
             cartRepository.save(cart);
             return createCartResponse(cart);
         }
-
-        // cart 없으면 생성
-        if (cart == null) cart = new Cart(userId);
 
         if (!productRepository.existsById(productId)) {
             throw new ElementNotFoundException(ErrorType.PRODUCT_NOT_FOUND, "productId=" + productId);
@@ -75,23 +61,15 @@ public class CartService {
      * @param productId 상품PK
      * @return 변경된 장바구니의 현재 상태
      */
-    @Transactional
     public CartResponse removeItem(String userId, Long productId) {
-        Cart cart = cartRepository.findById(userId).orElse(null);
-
-        if (cart == null) {
-            return CartResponse.empty(userId);
-        }
-
-        cart.removeItem(productId);
-
-        // 아이템 없으면 카트 삭제
-        if (deleteCartIfEmpty(cart)) {
-            return CartResponse.empty(userId);
-        }
-
-        cartRepository.save(cart);
-        return createCartResponse(cart);
+        return cartRepository.findById(userId)
+                .map(cart -> {
+                    cart.removeItem(productId);
+                    if(deleteCartIfEmpty(cart)) return CartResponse.empty(userId);
+                    cartRepository.save(cart);
+                    return createCartResponse(cart);
+                })
+                .orElseGet(() -> CartResponse.empty(userId));
     }
 
     /**

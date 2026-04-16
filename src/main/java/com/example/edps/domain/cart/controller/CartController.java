@@ -36,10 +36,10 @@ public class CartController {
      * 장바구니 수량 절대값 설정(Upsert)
      * - quantity <= 0 이면 삭제 정책
      */
-    @PutMapping("/items/{productId}")
+    @PutMapping("/items/{id}")
     public ResponseEntity<CartResponse> upsertItem(
             @RequestHeader(USER_ID_HEADER) String userId,
-            @PathVariable("productId") Long productId,
+            @PathVariable("id") Long productId,
             @RequestBody @Valid UpsertCartItemRequest request
     ) {
         return ResponseEntity.ok(cartService.upsertItem(userId, productId, request.quantity()));
@@ -48,10 +48,10 @@ public class CartController {
     /**
      * 장바구니에서 상품 제거
      */
-    @DeleteMapping("/items/{productId}")
+    @DeleteMapping("/items/{id}")
     public ResponseEntity<CartResponse> removeItem(
             @RequestHeader(USER_ID_HEADER) String userId,
-            @PathVariable("productId") Long productId
+            @PathVariable("id") Long productId
     ) {
         return ResponseEntity.ok(cartService.removeItem(userId, productId));
     }
