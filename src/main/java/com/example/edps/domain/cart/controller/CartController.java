@@ -34,7 +34,7 @@ public class CartController {
 
     /**
      * 장바구니 수량 절대값 설정(Upsert)
-     * - quantity <= 0 이면 삭제 정책
+     * quantity는 1 이상만 허용 (@Min(1))
      */
     @PutMapping("/items/{id}")
     public ResponseEntity<CartResponse> upsertItem(
