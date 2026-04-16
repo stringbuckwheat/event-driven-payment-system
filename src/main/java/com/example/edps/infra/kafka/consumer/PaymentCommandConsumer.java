@@ -4,6 +4,7 @@ import com.example.edps.domain.payment.event.PaymentRequestedCommand;
 import com.example.edps.domain.payment.service.PaymentCommandHandler;
 import com.example.edps.infra.kafka.KafkaTopics;
 import com.example.edps.infra.kafka.message.EventEnvelope;
+import com.example.edps.infra.kafka.message.EventEnvelopeParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -18,8 +19,8 @@ import tools.jackson.databind.ObjectMapper;
 @Slf4j
 public class PaymentCommandConsumer {
 
-    private final ObjectMapper objectMapper;
     private final PaymentCommandHandler paymentCommandHandler;
+    private final EventEnvelopeParser eventEnvelopeParser;
 
     @KafkaListener(
             topics = KafkaTopics.PAYMENT_COMMAND_REQUESTED,
@@ -27,22 +28,9 @@ public class PaymentCommandConsumer {
     )
     public void onMessage(@Header(value = KafkaHeaders.RECEIVED_KEY, required = false) String key,
                           String value) {
-        log.info("========================= PaymentCommandConsumer ========================");
-
-        EventEnvelope<PaymentRequestedCommand> env = parse(value);
-        PaymentRequestedCommand cmd = env.payload();
-
-        log.info("수신확인 topic={}, key={}, paymentId={}, orderId={}, eventId={}",
-                KafkaTopics.PAYMENT_COMMAND_REQUESTED, key, cmd.paymentId(), cmd.orderId(), env.eventId());
+        EventEnvelope<PaymentRequestedCommand> env =
+                eventEnvelopeParser.parse(value, KafkaTopics.PAYMENT_COMMAND_REQUESTED);
 
         paymentCommandHandler.process(env);
-    }
-
-    private EventEnvelope<PaymentRequestedCommand> parse(String value) {
-        try {
-            return objectMapper.readValue(value, new TypeReference<>() {});
-        } catch (Exception e) {
-            throw new RuntimeException("PAYMENT_REQUESTED parse 실패", e);
-        }
     }
 }

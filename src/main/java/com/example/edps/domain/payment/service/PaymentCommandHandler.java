@@ -38,7 +38,7 @@ public class PaymentCommandHandler {
             // 2) 트랜잭션 없이 PG 호출
             PgPaymentResponse res = paymentClient.requestPayment(cmd.paymentId(), cmd.total(), cmd.scenario());
             LocalDateTime respondedAt = LocalDateTime.now();
-            PayStatus status = "SUCCESS".equalsIgnoreCase(res.result()) ? PayStatus.SUCCESS : PayStatus.FAILED;
+            PayStatus status = res.isSuccess() ? PayStatus.SUCCESS : PayStatus.FAILED;
 
             // 3) Tx2: 결과 확정 + 로그 + outbox + ProcessedEvent 저장
             paymentTxService.confirm(cmd, envelope.traceId(), eventId, status, res.pgTxId(), safeReason(res.reason()), requestedAt, respondedAt);
@@ -47,10 +47,9 @@ public class PaymentCommandHandler {
             // 비즈니스 실패: Tx2로 FAILED 확정 + ProcessedEvent 저장
             paymentTxService.confirm(cmd, envelope.traceId(), eventId, PayStatus.FAILED, null, safeReason(be.getMessage()), requestedAt, LocalDateTime.now());
 
-        } catch (Exception ex) {
-            // transient: Tx로 attempt 기록 + 상태 조정 (재시도 소진 시 ProcessedEvent 저장)
+        } catch (RuntimeException ex) {
             paymentTxService.handleTransientTx(cmd, envelope.traceId(), eventId, requestedAt, ex);
-            throw new RuntimeException(ex); // Kafka 재시도
+            throw ex;
         }
     }
 

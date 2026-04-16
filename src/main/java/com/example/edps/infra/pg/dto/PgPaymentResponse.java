@@ -5,4 +5,7 @@ public record PgPaymentResponse(
         String pgTxId, // 성공 시 세팅
         String reason  // 실패 사유
 ) {
+    public boolean isSuccess() {
+        return "SUCCESS".equalsIgnoreCase(result);
+    }
 }
