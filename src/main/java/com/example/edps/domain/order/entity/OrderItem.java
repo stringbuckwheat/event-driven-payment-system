@@ -21,7 +21,7 @@ public class OrderItem {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @Setter
+    @Setter(AccessLevel.PACKAGE)
     private Order order;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -31,8 +31,6 @@ public class OrderItem {
 
     private int unitPrice; // 상품 개별 가격 (주문 시점 스냅샷)
 
-    private int linePrice; // 개별 가격 * 개수
-
     @CreatedDate
     private LocalDateTime createdAt;
 
@@ -40,6 +38,9 @@ public class OrderItem {
         this.product = product;
         this.quantity = quantity;
         this.unitPrice = unitPrice;
-        this.linePrice = unitPrice * quantity;
+    }
+
+    public int getLinePrice() {
+        return unitPrice * quantity;
     }
 }

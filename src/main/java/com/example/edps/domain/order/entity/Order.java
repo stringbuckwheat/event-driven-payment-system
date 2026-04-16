@@ -27,7 +27,6 @@ public class Order {
 
     private String userId;
 
-    @Setter
     @Enumerated(EnumType.STRING)
     private OrderStatus status;
 
@@ -63,6 +62,14 @@ public class Order {
     public void attachPayment(Payment payment) {
         this.payment = payment;
         payment.setOrder(this);
+    }
+
+    public void markAsPaid() {
+        this.status = OrderStatus.PAID;
+    }
+
+    public void markAsFailed() {
+        this.status = OrderStatus.FAILED;
     }
 }
 

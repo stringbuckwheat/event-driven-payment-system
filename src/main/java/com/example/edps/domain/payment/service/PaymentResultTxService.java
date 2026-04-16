@@ -40,7 +40,7 @@ public class PaymentResultTxService {
         // 주문 상태 변경
         Order order = orderRepository.findById(result.orderId())
                 .orElseThrow(() -> new BusinessException(ErrorType.ORDER_NOT_FOUND, "orderId=" + result.orderId()));
-        order.setStatus(OrderStatus.PAID);
+        order.markAsPaid();
 
         // 성공 후처리
         afterSuccess(order);
@@ -64,7 +64,7 @@ public class PaymentResultTxService {
         // 주문 상태 변경
         Order order = orderRepository.findById(result.orderId())
                 .orElseThrow(() -> new BusinessException(ErrorType.ORDER_NOT_FOUND, "orderId=" + result.orderId()));
-        order.setStatus(OrderStatus.FAILED);
+        order.markAsFailed();
 
         // 실패 후처리
         afterFailure(order);

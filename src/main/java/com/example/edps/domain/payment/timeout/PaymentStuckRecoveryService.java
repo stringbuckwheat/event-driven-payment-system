@@ -47,7 +47,7 @@ public class PaymentStuckRecoveryService {
         }
 
         // 2) 주문 실패
-        order.setStatus(OrderStatus.FAILED);
+        order.markAsFailed();
 
         // 3) 재고 롤백
         order.getOrderItems().forEach(item ->
