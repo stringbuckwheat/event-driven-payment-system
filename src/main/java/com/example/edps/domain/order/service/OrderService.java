@@ -114,7 +114,7 @@ public class OrderService {
 
         EventEnvelope<PaymentRequestedCommand> envelope
                 = EventEnvelope.of(traceId, KafkaTopics.PAYMENT_COMMAND_REQUESTED, cmd);
-        String key = String.valueOf(cmd.paymentId());
+        String key = String.valueOf(cmd.userId());
         outboxService.save(KafkaTopics.PAYMENT_COMMAND_REQUESTED, key, envelope);
     }
 }
