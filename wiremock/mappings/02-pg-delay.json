@@ -4,16 +4,15 @@
     "method": "POST",
     "url": "/pg/payments",
     "headers": {
-      "X-MOCK-SCENARIO": { "equalTo": "DELAY" }
+      "X-MOCK-SCENARIO": { "equalTo": "TRANSIENT_FAIL" }
     }
   },
   "response": {
-    "fixedDelayMilliseconds": 5000,
-    "status": 200,
+    "status": 500,
     "headers": { "Content-Type": "application/json" },
     "jsonBody": {
-      "result": "SUCCESS",
-      "pgTxId": "PG-DELAY-0001"
+      "error": "INTERNAL_SERVER_ERROR",
+      "message": "PG 일시적 오류"
     }
   }
 }

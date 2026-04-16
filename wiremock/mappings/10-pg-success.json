@@ -2,7 +2,10 @@
   "priority": 10,
   "request": {
     "method": "POST",
-    "url": "/pg/payments"
+    "url": "/pg/payments",
+    "headers": {
+      "X-MOCK-SCENARIO": { "equalTo": "SUCCESS" }
+    }
   },
   "response": {
     "status": 200,

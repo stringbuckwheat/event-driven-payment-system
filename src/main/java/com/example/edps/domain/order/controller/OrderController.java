@@ -1,6 +1,7 @@
 package com.example.edps.domain.order.controller;
 
 import com.example.edps.domain.order.dto.OrderStatusResponse;
+import com.example.edps.domain.order.enums.PgScenario;
 import com.example.edps.domain.order.service.OrderQueryService;
 import com.example.edps.domain.order.service.OrderService;
 import com.example.edps.global.common.AppHeaders;
@@ -14,10 +15,12 @@ import org.springframework.web.bind.annotation.*;
 public class OrderController {
     private final OrderService orderService;
     private final OrderQueryService orderQueryService;
+    private static final String PG_SCENARIO = "PG_SCENARIO";
 
     @PostMapping
-    public ResponseEntity<Void> getCart(@RequestHeader(AppHeaders.USER_ID) String userId) {
-        orderService.order(userId);
+    public ResponseEntity<Void> order(@RequestHeader(AppHeaders.USER_ID) String userId,
+                                      @RequestHeader(value = PG_SCENARIO, required = false) PgScenario scenario) {
+        orderService.order(userId, scenario);
         return ResponseEntity.ok().build();
     }
 

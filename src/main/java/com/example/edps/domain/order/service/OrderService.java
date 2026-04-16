@@ -4,6 +4,7 @@ import com.example.edps.domain.cart.model.Cart;
 import com.example.edps.domain.cart.repository.CartRepository;
 import com.example.edps.domain.order.entity.Order;
 import com.example.edps.domain.order.entity.OrderItem;
+import com.example.edps.domain.order.enums.PgScenario;
 import com.example.edps.domain.payment.entity.Payment;
 import com.example.edps.domain.order.repository.OrderRepository;
 import com.example.edps.domain.payment.event.PaymentRequestedCommand;
@@ -34,26 +35,27 @@ public class OrderService {
     private final OutboxService outboxService;
 
     @Transactional
-    public void order(String userId) {
-        // tx1) 재고 검증, 각종 validation, Order 생성
-        PaymentRequestedCommand command = createOrder(userId);
+    public void order(String userId, PgScenario scenario) {
+        // tx1) validation, Order/Payment 생성
+        PaymentRequestedCommand command = createOrder(userId, scenario);
 
-        // 결제 요청 커맨드를 Outbox에 적재
+        // 결제 요청 커맨드 Outbox 저장
         publishPaymentRequestedOutbox(command);
     }
 
-    private PaymentRequestedCommand createOrder(String userId) {
+    private PaymentRequestedCommand createOrder(String userId, PgScenario scenario) {
         Cart cart = cartRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorType.EMPTY_CART, "no cart, userId=" + userId));
 
-        Map<Long, Integer> items = cart.getItems();
-        if (items == null || items.isEmpty()) {
+        if (cart.isEmpty()) {
             throw new BusinessException(ErrorType.EMPTY_CART, "empty cart, userId=" + userId);
         }
 
+        Map<Long, Integer> items = cart.getItems();
         List<Long> productIds = new ArrayList<>(items.keySet());
         List<Product> products = productRepository.findAllByIdIn(productIds);
         List<OrderItem> orderItems = new ArrayList<>();
+
         int total = 0;
 
         for (Product p : products) {
@@ -73,7 +75,6 @@ public class OrderService {
         order.attachPayment(new Payment(order));
         orderRepository.save(order);
 
-        String scenario = "";
         return PaymentRequestedCommand.from(order, scenario);
     }
 

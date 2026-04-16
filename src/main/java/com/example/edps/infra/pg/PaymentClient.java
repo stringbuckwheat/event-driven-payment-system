@@ -1,5 +1,6 @@
 package com.example.edps.infra.pg;
 
+import com.example.edps.domain.order.enums.PgScenario;
 import com.example.edps.global.error.exception.PgBusinessException;
 import com.example.edps.global.error.exception.PgTransientException;
 import com.example.edps.infra.pg.dto.PgPaymentRequest;
@@ -8,7 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -23,12 +23,12 @@ public class PaymentClient {
         this.webClient = WebClient.builder().baseUrl(baseUrl).build();
     }
 
-    public PgPaymentResponse requestPayment(Long paymentId, int amount, String scenario) {
+    public PgPaymentResponse requestPayment(Long paymentId, int amount, PgScenario scenario) {
         return webClient.post()
                 .uri("/pg/payments")
                 .headers(h -> {
-                    if (StringUtils.hasText(scenario)) {
-                        h.add("X-MOCK-SCENARIO", scenario);
+                    if (scenario != null) {
+                        h.add("X-MOCK-SCENARIO", scenario.name());
                     }
                 })
                 .bodyValue(new PgPaymentRequest(paymentId, amount))

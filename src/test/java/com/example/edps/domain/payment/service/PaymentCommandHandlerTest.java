@@ -1,5 +1,6 @@
 package com.example.edps.domain.payment.service;
 
+import com.example.edps.domain.order.enums.PgScenario;
 import com.example.edps.domain.payment.enums.PayStatus;
 import com.example.edps.domain.payment.event.PaymentRequestedCommand;
 import com.example.edps.global.error.exception.PgBusinessException;
@@ -147,7 +148,7 @@ class PaymentCommandHandlerTest {
 
     private EventEnvelope<PaymentRequestedCommand> makeEnvelope(Long paymentId) {
         PaymentRequestedCommand cmd = new PaymentRequestedCommand(
-                ORDER_ID, paymentId, "user-1", AMOUNT, "");
+                ORDER_ID, paymentId, "user-1", AMOUNT, PgScenario.SUCCESS);
         return EventEnvelope.of("trace-1", KafkaTopics.PAYMENT_COMMAND_REQUESTED, cmd);
     }
 }
