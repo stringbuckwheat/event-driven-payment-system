@@ -8,7 +8,7 @@ import com.example.edps.domain.payment.enums.PayStatus;
 import com.example.edps.domain.payment.event.PaymentCompletedEvent;
 import com.example.edps.domain.product.repository.ProductRepository;
 import com.example.edps.global.error.ErrorType;
-import com.example.edps.global.error.exception.ElementNotFoundException;
+import com.example.edps.global.error.exception.BusinessException;
 import com.example.edps.infra.idempotency.ProcessedEvent;
 import com.example.edps.infra.idempotency.ProcessedEventRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +39,7 @@ public class PaymentResultTxService {
 
         // 주문 상태 변경
         Order order = orderRepository.findById(result.orderId())
-                .orElseThrow(() -> new ElementNotFoundException(ErrorType.ORDER_NOT_FOUND, "orderId=" + result.orderId()));
+                .orElseThrow(() -> new BusinessException(ErrorType.ORDER_NOT_FOUND, "orderId=" + result.orderId()));
         order.setStatus(OrderStatus.PAID);
 
         // 성공 후처리
@@ -63,7 +63,7 @@ public class PaymentResultTxService {
 
         // 주문 상태 변경
         Order order = orderRepository.findById(result.orderId())
-                .orElseThrow(() -> new ElementNotFoundException(ErrorType.ORDER_NOT_FOUND, "orderId=" + result.orderId()));
+                .orElseThrow(() -> new BusinessException(ErrorType.ORDER_NOT_FOUND, "orderId=" + result.orderId()));
         order.setStatus(OrderStatus.FAILED);
 
         // 실패 후처리

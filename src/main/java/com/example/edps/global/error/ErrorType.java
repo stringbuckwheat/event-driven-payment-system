@@ -13,9 +13,13 @@ public enum ErrorType {
     ORDER_NOT_FOUND("주문 내역을 찾을 수 없어요"),
     CART_NOT_FOUND("카트를 찾을 수 없어요"),
 
+    // ACCESS DENIED
+    ORDER_ACCESS_DENIED("주문을 확인할 권한이 없어요"),
+
     // 주문 생성
     EMPTY_CART("장바구니가 비었어요"),
     NOT_ENOUGH_STOCK("재고가 모자라요"),
+    OUT_OF_STOCK("이 상품은 품절이에요"),
 
     BAD_PARAMETER("요청 값이 올바르지 않습니다"),
 

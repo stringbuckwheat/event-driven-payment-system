@@ -5,15 +5,12 @@ import com.example.edps.domain.cart.repository.CartRepository;
 import com.example.edps.domain.order.entity.Order;
 import com.example.edps.domain.order.entity.OrderItem;
 import com.example.edps.domain.payment.entity.Payment;
-import com.example.edps.domain.payment.enums.PayStatus;
 import com.example.edps.domain.order.repository.OrderRepository;
-import com.example.edps.domain.payment.repository.PaymentRepository;
 import com.example.edps.domain.payment.event.PaymentRequestedCommand;
 import com.example.edps.domain.product.entity.Product;
 import com.example.edps.domain.product.repository.ProductRepository;
 import com.example.edps.global.error.ErrorType;
-import com.example.edps.global.error.exception.ElementNotFoundException;
-import com.example.edps.global.error.exception.PaymentInProgressException;
+import com.example.edps.global.error.exception.BusinessException;
 import com.example.edps.global.error.exception.SoldOutException;
 import com.example.edps.infra.kafka.KafkaTopics;
 import com.example.edps.infra.kafka.message.EventEnvelope;
@@ -34,7 +31,6 @@ public class OrderService {
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
-    private final PaymentRepository paymentRepository;
     private final OutboxService outboxService;
 
     @Transactional
@@ -47,13 +43,12 @@ public class OrderService {
     }
 
     private PaymentRequestedCommand createOrder(String userId) {
-        log.info("========================= OrderService ========================");
         Cart cart = cartRepository.findById(userId)
-                .orElseThrow(() -> new ElementNotFoundException(ErrorType.EMPTY_CART, "no cart, userId=" + userId));
+                .orElseThrow(() -> new BusinessException(ErrorType.EMPTY_CART, "no cart, userId=" + userId));
 
         Map<Long, Integer> items = cart.getItems();
         if (items == null || items.isEmpty()) {
-            throw new ElementNotFoundException(ErrorType.EMPTY_CART, "empty cart, userId=" + userId);
+            throw new BusinessException(ErrorType.EMPTY_CART, "empty cart, userId=" + userId);
         }
 
         List<Long> productIds = new ArrayList<>(items.keySet());
@@ -62,16 +57,16 @@ public class OrderService {
         int total = 0;
 
         for (Product p : products) {
-            int qty = items.get(p.getId());
+            int requested = items.get(p.getId());
 
             // 재고차감
-            int updated = productRepository.reduceStock(p.getId(), qty);
+            int updated = productRepository.reduceStock(p.getId(), requested);
             if (updated == 0) {
-                throw new SoldOutException(ErrorType.NOT_ENOUGH_STOCK, p.getId(), qty);
+                throw new SoldOutException(ErrorType.NOT_ENOUGH_STOCK, p.getId(), requested);
             }
 
-            total += qty * p.getPrice();
-            orderItems.add(new OrderItem(p, qty, p.getPrice()));
+            total += requested * p.getPrice();
+            orderItems.add(new OrderItem(p, requested, p.getPrice()));
         }
 
         Order order = Order.create(userId, orderItems, total);

@@ -7,7 +7,7 @@ import com.example.edps.domain.cart.repository.CartRepository;
 import com.example.edps.domain.product.entity.Product;
 import com.example.edps.domain.product.repository.ProductRepository;
 import com.example.edps.global.error.ErrorType;
-import com.example.edps.global.error.exception.ElementNotFoundException;
+import com.example.edps.global.error.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -48,13 +48,13 @@ public class CartService {
      * @param productId 상품ID
      * @param quantity  수량
      * @return 변경된 장바구니 응답 DTO
-     * @throws ElementNotFoundException 상품이 RDB에 존재하지 않을 경우
+     * @throws com.example.edps.global.error.exception.BusinessException 상품이 RDB에 존재하지 않을 경우
      */
     public CartResponse upsertItem(String userId, Long productId, int quantity) {
         Cart cart = cartRepository.findById(userId).orElseGet(() -> new Cart(userId));
 
         if (!productRepository.existsById(productId)) {
-            throw new ElementNotFoundException(ErrorType.PRODUCT_NOT_FOUND, "productId=" + productId);
+            throw new BusinessException(ErrorType.PRODUCT_NOT_FOUND, "productId=" + productId);
         }
 
         cart.updateItem(productId, quantity);

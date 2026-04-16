@@ -8,7 +8,7 @@ import com.example.edps.domain.payment.event.PaymentRequestedCommand;
 import com.example.edps.domain.payment.repository.PaymentLogRepository;
 import com.example.edps.domain.payment.repository.PaymentRepository;
 import com.example.edps.global.error.ErrorType;
-import com.example.edps.global.error.exception.ElementNotFoundException;
+import com.example.edps.global.error.exception.BusinessException;
 import com.example.edps.infra.idempotency.ProcessedEvent;
 import com.example.edps.infra.idempotency.ProcessedEventRepository;
 import com.example.edps.infra.kafka.KafkaTopics;
@@ -47,7 +47,7 @@ public class PaymentTxService {
                         LocalDateTime respondedAt) {
 
         Payment payment = paymentRepository.findById(cmd.paymentId())
-                .orElseThrow(() -> new ElementNotFoundException(ErrorType.PAYMENT_NOT_FOUND, "paymentId=" + cmd.paymentId()));
+                .orElseThrow(() -> new BusinessException(ErrorType.PAYMENT_NOT_FOUND, "paymentId=" + cmd.paymentId()));
 
         if (payment.getStatus() != PayStatus.PROCESSING) {
             log.info("이미 확정된 결제 - skip paymentId={}, status={}", cmd.paymentId(), payment.getStatus());
@@ -91,7 +91,7 @@ public class PaymentTxService {
                                   Exception ex) {
 
         Payment payment = paymentRepository.findById(cmd.paymentId())
-                .orElseThrow(() -> new ElementNotFoundException(ErrorType.PAYMENT_NOT_FOUND, "paymentId=" + cmd.paymentId()));
+                .orElseThrow(() -> new BusinessException(ErrorType.PAYMENT_NOT_FOUND, "paymentId=" + cmd.paymentId()));
 
         if (payment.getStatus() != PayStatus.PROCESSING) {
             log.info("이미 확정된 결제 - skip transient paymentId={}, status={}", cmd.paymentId(), payment.getStatus());

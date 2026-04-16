@@ -1,6 +1,7 @@
 package com.example.edps.global.error;
 
-import com.example.edps.global.error.exception.ElementNotFoundException;
+import com.example.edps.global.error.exception.BusinessException;
+import com.example.edps.global.error.exception.SoldOutException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,13 +16,16 @@ import java.util.Map;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(ElementNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleElementNotFoundException(ElementNotFoundException e) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ErrorResponse(
-                        e.getErrorType(),
-                        Map.of("detail", e.getMessage())
-                ));
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
+        ErrorResponse er = new ErrorResponse(e.getErrorType(), Map.of("detail", e.getMessage()));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(er);
+    }
+
+    @ExceptionHandler(SoldOutException.class)
+    public ResponseEntity<ErrorResponse> handleSoldOutException(SoldOutException e) {
+        Map<String, Object> details = Map.of("productId", e.getProductId(), "requested", e.getRequested());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(e.getErrorType(), details));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -6,7 +6,7 @@ import com.example.edps.domain.cart.model.Cart;
 import com.example.edps.domain.cart.repository.CartRepository;
 import com.example.edps.domain.product.entity.Product;
 import com.example.edps.domain.product.repository.ProductRepository;
-import com.example.edps.global.error.exception.ElementNotFoundException;
+import com.example.edps.global.error.exception.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -243,7 +243,7 @@ class CartServiceTest {
 
         // when & then
         assertThatThrownBy(() -> cartService.upsertItem(USER_ID, 999L, 1))
-                .isInstanceOf(ElementNotFoundException.class);
+                .isInstanceOf(BusinessException.class);
         then(cartRepository).should(never()).save(any());
     }
 
