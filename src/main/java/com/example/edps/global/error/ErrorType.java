@@ -30,6 +30,7 @@ public enum ErrorType {
     // DLQ
     PAYMENT_NOT_REPROCESSABLE("PayStatus.READY가 아님"),
     UNSUPPORTED_DLQ_TOPIC("적절한 DLQ TOPIC이 아님"),
+    DLQ_ALREADY_REPROCESSED("RLock 획득 실패 - 이미 재처리 중"),
 
     // JSON
     SERIALIZE_FAIL("직렬화 실패"),

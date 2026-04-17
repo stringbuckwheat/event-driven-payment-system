@@ -1,5 +1,6 @@
 package com.example.edps.infra.kafka.dlq.entity;
 
+import com.example.edps.infra.kafka.dlq.enums.ReprocessStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -38,6 +39,11 @@ public class PaymentDlqLog {
     private Long originalOffset;
     private String consumerGroup;
 
+    @Enumerated(EnumType.STRING) // 재처리 여부
+    private ReprocessStatus reprocessStatus;
+
+    private LocalDateTime reprocessedAt;
+
     @CreatedDate
     private LocalDateTime createdAt;
 
@@ -55,5 +61,15 @@ public class PaymentDlqLog {
         this.originalTopic = originalTopic;
         this.originalOffset = originalOffset;
         this.consumerGroup = consumerGroup;
+    }
+
+    public void markReprocessed() {
+        this.reprocessStatus = ReprocessStatus.REPROCESSED;
+        this.reprocessedAt = LocalDateTime.now();
+    }
+
+    public void markFailed() {
+        this.reprocessStatus = ReprocessStatus.FAILED;
+        this.reprocessedAt = LocalDateTime.now();
     }
 }
