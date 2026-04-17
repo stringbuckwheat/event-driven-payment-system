@@ -16,16 +16,16 @@ public class SlackNotifier {
         this.webClient = WebClient.builder().baseUrl(webhookUrl).build();
     }
 
-    public void sendDlqAlert(String originalTopic, String eventId, Long orderId, Long paymentId, String cause) {
-        String message = """
+    public void sendDlqAlert(String originalTopic, String eventId, Long orderId, Long paymentId, String cause, String message) {
+        String body = """
             {
-                "text": ":rotating_light: *DLQ Alert*\\n• originalTopic: `%s`\\n• eventId: `%s`\\n• orderId: `%s`\\n• paymentId: `%s`\\n• cause: `%s`\\n• time: `%s`"
+                "text": ":rotating_light: *DLQ Alert*\\n• originalTopic: `%s`\\n• eventId: `%s`\\n• orderId: `%s`\\n• paymentId: `%s`\\n• cause: `%s`\\n• message: `%s`\\n• time: `%s`"
             }
-            """.formatted(originalTopic, eventId, orderId, paymentId, cause, LocalDateTime.now());
+            """.formatted(originalTopic, eventId, orderId, paymentId, cause, message, LocalDateTime.now());
 
         try {
             webClient.post()
-                    .bodyValue(message)
+                    .bodyValue(body)
                     .header("Content-Type", "application/json")
                     .retrieve()
                     .bodyToMono(String.class)

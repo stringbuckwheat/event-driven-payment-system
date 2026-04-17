@@ -23,10 +23,18 @@ public class KafkaRetryConfig {
         DeadLetterPublishingRecoverer recoverer =
                 new DeadLetterPublishingRecoverer(
                         kafkaTemplate,
-                        (r, e) -> new TopicPartition(
-                                KafkaTopics.PAYMENT_COMMAND_REQUESTED_DLQ,
-                                r.partition()
-                        )
+                        (r, e) -> switch (r.topic()) {
+                            // 결제 커맨드 실패
+                            case KafkaTopics.PAYMENT_COMMAND_REQUESTED ->
+                                    new TopicPartition(KafkaTopics.PAYMENT_COMMAND_REQUESTED_DLQ, r.partition());
+
+                            // 결제 후처리 실패
+                            case KafkaTopics.PAYMENT_EVENT_SUCCEEDED,
+                                 KafkaTopics.PAYMENT_EVENT_FAILED ->
+                                    new TopicPartition(KafkaTopics.PAYMENT_RESULT_DLQ, r.partition());
+
+                            default -> new TopicPartition(r.topic() + ".dlq", r.partition());
+                        }
                 );
 
         // 2초 간격 5회 재시도
@@ -38,9 +46,12 @@ public class KafkaRetryConfig {
 
         // 재시도마다 예외 로깅
         handler.setRetryListeners((record, ex, deliveryAttempt) ->
-                log.error("[Kafka Retry] attempt={}/{}, topic={}, cause={}",
-                        deliveryAttempt, fixedBackOff.getMaxAttempts() + 1,
-                        record.topic(), ex.getMessage()));
+        {
+            assert ex != null;
+            log.error("[Kafka Retry] attempt={}/{}, topic={}, cause={}",
+                    deliveryAttempt, fixedBackOff.getMaxAttempts() + 1,
+                    record.topic(), ex.getMessage());
+        });
 
         return handler;
     }

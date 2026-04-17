@@ -12,6 +12,7 @@ public final class KafkaTopics {
     public static final String PAYMENT_EVENT_SUCCEEDED = "payment.event.succeeded";
     public static final String PAYMENT_EVENT_FAILED = "payment.event.failed";
 
-    // 결제 요청 DLQ
+    // 결제 DLQ
     public static final String PAYMENT_COMMAND_REQUESTED_DLQ = "payment.command.requested.dlq";
+    public static final String PAYMENT_RESULT_DLQ = "payment.result.dlq";
 }

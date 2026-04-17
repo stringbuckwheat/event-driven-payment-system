@@ -1,4 +1,4 @@
-package com.example.edps.infra.kafka.consumer;
+package com.example.edps.infra.kafka.consumer.dlq;
 
 import com.example.edps.domain.payment.event.PaymentRequestedCommand;
 import com.example.edps.infra.kafka.KafkaTopics;
@@ -32,7 +32,6 @@ public class PaymentCommandDlqConsumer {
             @Header(value = KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP, required = false) String consumerGroup) {
 
         log.error("[DLQ] originalTopic={}, cause={}, message={}", originalTopic, cause, message);
-        log.error("offset type={}, value={}", originalOffset.getClass(), originalOffset);
 
         Long orderId = null;
         Long paymentId = null;
@@ -59,11 +58,12 @@ public class PaymentCommandDlqConsumer {
                         .paymentId(paymentId)
                         .eventId(eventId)
                         .payload(value)
-                        .errorMessage(cause)
+                        .cause(cause)
+                        .errorMessage(message)
                         .build()
         );
 
         // 슬랙 알림
-        slackNotifier.sendDlqAlert(originalTopic, eventId, orderId, paymentId, cause);
+        slackNotifier.sendDlqAlert(originalTopic, eventId, orderId, paymentId, cause, message);
     }
 }

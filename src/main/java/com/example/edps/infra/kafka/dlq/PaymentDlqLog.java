@@ -26,6 +26,8 @@ public class PaymentDlqLog {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String payload;
 
+    private String cause;
+
     @Column(length = 500)
     private String errorMessage;
 
@@ -41,12 +43,13 @@ public class PaymentDlqLog {
 
     @Builder
     public PaymentDlqLog(String eventId, Long orderId, Long paymentId,
-                         String payload, String errorMessage, String topic,
+                         String payload, String cause, String errorMessage, String topic,
                          String originalTopic, Long originalOffset, String consumerGroup) {
         this.eventId = eventId;
         this.orderId = orderId;
         this.paymentId = paymentId;
         this.payload = payload;
+        this.cause = cause;
         this.errorMessage = errorMessage;
         this.topic = topic;
         this.originalTopic = originalTopic;
