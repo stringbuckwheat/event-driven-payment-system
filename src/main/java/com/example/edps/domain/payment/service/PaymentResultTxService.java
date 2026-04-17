@@ -2,15 +2,13 @@ package com.example.edps.domain.payment.service;
 
 import com.example.edps.domain.cart.repository.CartRepository;
 import com.example.edps.domain.order.entity.Order;
-import com.example.edps.domain.order.enums.OrderStatus;
 import com.example.edps.domain.order.repository.OrderRepository;
-import com.example.edps.domain.payment.enums.PayStatus;
 import com.example.edps.domain.payment.event.PaymentCompletedEvent;
 import com.example.edps.domain.product.repository.ProductRepository;
 import com.example.edps.global.error.ErrorType;
 import com.example.edps.global.error.exception.BusinessException;
-import com.example.edps.infra.idempotency.ProcessedEvent;
-import com.example.edps.infra.idempotency.ProcessedEventRepository;
+import com.example.edps.infra.processedevent.ProcessedEvent;
+import com.example.edps.infra.processedevent.ProcessedEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

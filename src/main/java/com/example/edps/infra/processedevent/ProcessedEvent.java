@@ -1,4 +1,4 @@
-package com.example.edps.infra.idempotency;
+package com.example.edps.infra.processedevent;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
