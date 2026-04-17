@@ -2,8 +2,8 @@ package com.example.edps.infra.kafka.consumer.dlq;
 
 import com.example.edps.domain.payment.event.PaymentCompletedEvent;
 import com.example.edps.infra.kafka.KafkaTopics;
-import com.example.edps.infra.kafka.dlq.PaymentDlqLog;
-import com.example.edps.infra.kafka.dlq.PaymentDlqLogRepository;
+import com.example.edps.infra.kafka.dlq.entity.PaymentDlqLog;
+import com.example.edps.infra.kafka.dlq.repository.PaymentDlqLogRepository;
 import com.example.edps.infra.kafka.message.EventEnvelope;
 import com.example.edps.infra.kafka.message.EventEnvelopeParser;
 import com.example.edps.infra.notification.SlackNotifier;

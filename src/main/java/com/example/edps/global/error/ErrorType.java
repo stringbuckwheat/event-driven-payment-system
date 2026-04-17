@@ -12,6 +12,7 @@ public enum ErrorType {
     PAYMENT_NOT_FOUND("결제 내역을 찾을 수 없어요"),
     ORDER_NOT_FOUND("주문 내역을 찾을 수 없어요"),
     CART_NOT_FOUND("카트를 찾을 수 없어요"),
+    DLQ_LOG_NOT_FOUND("DLQ 기록을 찾을 수 없어요"),
 
     // ACCESS DENIED
     ORDER_ACCESS_DENIED("주문을 확인할 권한이 없어요"),
@@ -25,6 +26,10 @@ public enum ErrorType {
 
     // 결제 관련
     PAYMENT_IN_PROGRESS("이미 진행중인 결제가 있어요"),
+
+    // DLQ
+    PAYMENT_NOT_REPROCESSABLE("PayStatus.READY가 아님"),
+    UNSUPPORTED_DLQ_TOPIC("적절한 DLQ TOPIC이 아님"),
 
     // JSON
     SERIALIZE_FAIL("직렬화 실패"),

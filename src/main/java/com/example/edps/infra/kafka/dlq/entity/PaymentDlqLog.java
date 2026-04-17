@@ -1,4 +1,4 @@
-package com.example.edps.infra.kafka.dlq;
+package com.example.edps.infra.kafka.dlq.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
