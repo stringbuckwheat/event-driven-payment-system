@@ -31,6 +31,7 @@ public class PaymentCommandConsumer {
             groupId = "edps-payment-worker"
     )
     public void onMessage(String value) {
+//        throw new RuntimeException("DLQ Test");
         EventEnvelope<PaymentRequestedCommand> env =
                 eventEnvelopeParser.parse(value, PAYMENT_COMMAND_REQUESTED, PaymentRequestedCommand.class);
 
