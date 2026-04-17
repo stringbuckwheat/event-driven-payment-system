@@ -16,6 +16,7 @@ import com.example.edps.global.error.exception.SoldOutException;
 import com.example.edps.infra.kafka.KafkaTopics;
 import com.example.edps.infra.kafka.message.EventEnvelope;
 import com.example.edps.infra.outbox.service.OutboxService;
+import io.opentelemetry.api.trace.Span;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -110,7 +110,7 @@ public class OrderService {
      */
     private void savePaymentCommandToOutbox(Order order, PgScenario scenario) {
         PaymentRequestedCommand cmd = PaymentRequestedCommand.from(order, scenario);
-        String traceId = UUID.randomUUID().toString(); // TODO OpenTelemetry 도입 후 수정
+        String traceId = Span.current().getSpanContext().getTraceId();
 
         EventEnvelope<PaymentRequestedCommand> envelope
                 = EventEnvelope.of(traceId, KafkaTopics.PAYMENT_COMMAND_REQUESTED, cmd);
