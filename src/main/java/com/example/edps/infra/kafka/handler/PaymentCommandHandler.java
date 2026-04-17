@@ -32,6 +32,8 @@ public class PaymentCommandHandler {
             return;
         }
 
+        log.info("결제 선점 완료");
+
         LocalDateTime requestedAt = LocalDateTime.now();
 
         try {
@@ -39,6 +41,7 @@ public class PaymentCommandHandler {
             PgPaymentResponse res = paymentClient.requestPayment(cmd);
             LocalDateTime respondedAt = LocalDateTime.now();
             PayStatus status = res.isSuccess() ? PayStatus.SUCCESS : PayStatus.FAILED;
+            log.info("PgPaymentResponse.status={}", status);
 
             // 3) Tx2: 결과 확정 + 로그 + outbox + ProcessedEvent 저장
             paymentTxService.confirm(
@@ -52,7 +55,8 @@ public class PaymentCommandHandler {
                     respondedAt
             );
 
-        } catch (PgBusinessException be) {
+        } catch (PgBusinessException ex) {
+            log.warn(ex.getMessage(), ex);
             // 비즈니스 실패: Tx2로 FAILED 확정 + ProcessedEvent 저장
             paymentTxService.confirm(
                     cmd,
@@ -60,12 +64,13 @@ public class PaymentCommandHandler {
                     envelope.eventId(),
                     PayStatus.FAILED,
                     null,
-                    safeReason(be.getMessage()),
+                    safeReason(ex.getMessage()),
                     requestedAt,
                     LocalDateTime.now()
             );
 
         } catch (RuntimeException ex) {
+            log.warn(ex.getMessage(), ex);
             paymentTxService.handleTransientTx(cmd, envelope.traceId(), envelope.eventId(), requestedAt, ex);
             throw ex;
         }

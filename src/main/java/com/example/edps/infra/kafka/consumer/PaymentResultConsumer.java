@@ -20,24 +20,26 @@ public class PaymentResultConsumer {
 
     /**
      * 결제 성공 시 후처리
+     *
      * @param value
      */
     @KafkaListener(topics = KafkaTopics.PAYMENT_EVENT_SUCCEEDED, groupId = "payment-result")
     public void onSuccess(String value) {
         EventEnvelope<PaymentCompletedEvent> envelope
-                = eventEnvelopeParser.parse(value, KafkaTopics.PAYMENT_EVENT_SUCCEEDED);
+                = eventEnvelopeParser.parse(value, KafkaTopics.PAYMENT_EVENT_SUCCEEDED, PaymentCompletedEvent.class);
 
         paymentResultTxService.applySuccess(envelope.payload(), envelope.eventId());
     }
 
     /**
      * 결제 실패 시 후처리
+     *
      * @param value
      */
     @KafkaListener(topics = KafkaTopics.PAYMENT_EVENT_FAILED, groupId = "payment-result")
     public void onFailed(String value) {
         EventEnvelope<PaymentCompletedEvent> envelope
-                = eventEnvelopeParser.parse(value, KafkaTopics.PAYMENT_EVENT_FAILED);
+                = eventEnvelopeParser.parse(value, KafkaTopics.PAYMENT_EVENT_FAILED, PaymentCompletedEvent.class);
 
         paymentResultTxService.applyFailure(envelope.payload(), envelope.eventId());
     }

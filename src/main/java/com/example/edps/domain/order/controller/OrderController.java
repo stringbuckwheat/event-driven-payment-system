@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 public class OrderController {
     private final OrderService orderService;
     private final OrderQueryService orderQueryService;
-    private static final String PG_SCENARIO = "PG_SCENARIO";
+    private static final String PG_SCENARIO = "PG-SCENARIO";
 
     @PostMapping
     public ResponseEntity<Void> order(@RequestHeader(AppHeaders.USER_ID) String userId,

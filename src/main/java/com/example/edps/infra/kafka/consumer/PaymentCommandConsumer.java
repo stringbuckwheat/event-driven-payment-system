@@ -1,6 +1,7 @@
 package com.example.edps.infra.kafka.consumer;
 
 import com.example.edps.domain.payment.event.PaymentRequestedCommand;
+import com.example.edps.infra.kafka.KafkaTopics;
 import com.example.edps.infra.kafka.handler.PaymentCommandHandler;
 import com.example.edps.infra.kafka.message.EventEnvelope;
 import com.example.edps.infra.kafka.message.EventEnvelopeParser;
@@ -32,7 +33,7 @@ public class PaymentCommandConsumer {
     )
     public void onMessage(String value) {
         EventEnvelope<PaymentRequestedCommand> env =
-                eventEnvelopeParser.parse(value, PAYMENT_COMMAND_REQUESTED);
+                eventEnvelopeParser.parse(value, PAYMENT_COMMAND_REQUESTED, PaymentRequestedCommand.class);
 
         paymentCommandHandler.process(env);
     }
