@@ -36,8 +36,16 @@ public class PaymentStuckRecoveryJob {
 
             if (ids.isEmpty()) break;
 
-            ids.forEach(recoveryService::recoverSingleOrder);
-            totalRecovered += ids.size();
+            int recovered = 0;
+            for (Long orderId : ids) {
+                try {
+                    recoveryService.recoverSingleOrder(orderId);
+                    recovered++;
+                } catch (Exception e) {
+                    log.error("[RECOVER] 개별 복구 실패 orderId={}, cause={}", orderId, e.getMessage(), e);
+                }
+            }
+            totalRecovered += recovered;
         }
 
         if (totalRecovered == 0) {

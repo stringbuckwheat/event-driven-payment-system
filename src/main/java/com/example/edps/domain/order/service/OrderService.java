@@ -69,6 +69,9 @@ public class OrderService {
         order.attachPayment(new Payment(order));
         orderRepository.save(order);
 
+        log.info("주문 생성 완료 orderId={}, userId={}, total={}, items={}",
+                order.getId(), userId, total, orderItems.size());
+
         return order;
     }
 

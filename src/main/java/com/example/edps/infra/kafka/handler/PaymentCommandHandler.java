@@ -32,7 +32,7 @@ public class PaymentCommandHandler {
             return;
         }
 
-        log.info("결제 선점 완료");
+        log.info("결제 선점 완료 paymentId={}", cmd.paymentId());
 
         LocalDateTime requestedAt = LocalDateTime.now();
 

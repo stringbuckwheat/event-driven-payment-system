@@ -1,7 +1,6 @@
 package com.example.edps.domain.payment.timeout;
 
 import com.example.edps.domain.order.entity.Order;
-import com.example.edps.domain.order.enums.OrderStatus;
 import com.example.edps.domain.order.repository.OrderRepository;
 import com.example.edps.domain.payment.entity.Payment;
 import com.example.edps.domain.payment.enums.PayStatus;
@@ -18,6 +17,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -63,10 +63,12 @@ public class PaymentStuckRecoveryService {
                 .respondedAt(LocalDateTime.now())
                 .build();
 
+        String traceId = UUID.randomUUID().toString();
+
         outboxService.save(
                 KafkaTopics.PAYMENT_EVENT_FAILED,
                 String.valueOf(payment.getId()),
-                EventEnvelope.of("stuck-recovery", KafkaTopics.PAYMENT_EVENT_FAILED, failedEvent));
+                EventEnvelope.of(traceId, KafkaTopics.PAYMENT_EVENT_FAILED, failedEvent));
 
         log.warn("[RECOVER] stuck 결제 실패 확정 orderId={}, paymentId={}", order.getId(), payment.getId());
     }

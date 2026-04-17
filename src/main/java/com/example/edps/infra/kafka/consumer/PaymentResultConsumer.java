@@ -28,6 +28,9 @@ public class PaymentResultConsumer {
         EventEnvelope<PaymentCompletedEvent> envelope
                 = eventEnvelopeParser.parse(value, KafkaTopics.PAYMENT_EVENT_SUCCEEDED, PaymentCompletedEvent.class);
 
+        log.info("[PaymentResult] 성공 이벤트 수신 eventId={}, paymentId={}, orderId={}",
+                envelope.eventId(), envelope.payload().paymentId(), envelope.payload().orderId());
+
         paymentResultTxService.applySuccess(envelope.payload(), envelope.eventId());
     }
 
@@ -40,6 +43,10 @@ public class PaymentResultConsumer {
     public void onFailed(String value) {
         EventEnvelope<PaymentCompletedEvent> envelope
                 = eventEnvelopeParser.parse(value, KafkaTopics.PAYMENT_EVENT_FAILED, PaymentCompletedEvent.class);
+
+        log.info("[PaymentResult] 실패 이벤트 수신 eventId={}, paymentId={}, orderId={}, reason={}",
+                envelope.eventId(), envelope.payload().paymentId(), envelope.payload().orderId(),
+                envelope.payload().failureReason());
 
         paymentResultTxService.applyFailure(envelope.payload(), envelope.eventId());
     }
