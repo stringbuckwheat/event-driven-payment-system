@@ -1,0 +1,39 @@
+@startuml
+skinparam backgroundColor #FAFAFA
+skinparam state {
+    BackgroundColor #FFFFFF
+    BorderColor #888888
+    FontColor #333333
+    ArrowColor #444444
+}
+skinparam roundcorner 10
+
+title PayStatus 상태머신
+
+[*] --> READY : 결제 생성 (TX1)
+
+state READY #D0E8FF {
+    READY : 결제 생성됨
+}
+
+state PROCESSING #D4EDDA {
+    PROCESSING : 결제 처리중
+}
+
+state SUCCESS #D4EDDA {
+    SUCCESS : 결제 성공
+}
+
+state FAILED #FFD6D6 {
+    FAILED : 결제 실패
+}
+
+READY --> PROCESSING : 결제 선점\n(중복 결제 방지)
+PROCESSING --> READY : 일시적 오류\n(재시도 준비, TX3)
+PROCESSING --> SUCCESS : PG 성공\n(TX2 확정)
+PROCESSING --> FAILED : PG 실패(비즈니스)\n(TX2 확정)
+
+SUCCESS --> [*]
+FAILED --> [*]
+
+@enduml
