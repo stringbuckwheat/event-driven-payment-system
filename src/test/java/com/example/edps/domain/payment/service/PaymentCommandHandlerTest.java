@@ -55,11 +55,9 @@ class PaymentCommandHandlerTest {
         // given
         EventEnvelope<PaymentRequestedCommand> envelope = makeEnvelope(PAYMENT_ID);
         given(paymentTxService.claim(PAYMENT_ID)).willReturn(false);
-        System.out.println("[테스트] claim 실패 시나리오 - paymentId: " + PAYMENT_ID);
 
         // when
         handler.process(envelope);
-        System.out.println("[결과] handler.process() 완료 - PG 호출 없어야 함");
 
         // then
         then(paymentClient).shouldHaveNoInteractions();
@@ -68,7 +66,6 @@ class PaymentCommandHandlerTest {
                 .confirm(any(), any(), any(), any(), any(), any(), any(), any());
         then(paymentTxService).should(never())
                 .handleTransientTx(any(), any(), any(), any(), any());
-        System.out.println("[검증] ✅ PG 미호출, confirm 미호출, handleTransientTx 미호출 확인");
     }
 
     @Test
@@ -77,15 +74,13 @@ class PaymentCommandHandlerTest {
         // given
         EventEnvelope<PaymentRequestedCommand> envelope = makeEnvelope(PAYMENT_ID);
         given(paymentTxService.claim(PAYMENT_ID)).willReturn(true);
-        given(paymentClient.requestPayment(eq(PAYMENT_ID), anyInt(), any()))
+        given(paymentClient.requestPayment(any(PaymentRequestedCommand.class)))
                 .willReturn(new PgPaymentResponse("SUCCESS", "pg-tx-123", null));
-        System.out.println("[테스트] PG 승인 성공 시나리오 - paymentId: " + PAYMENT_ID);
 
         // when
         handler.process(envelope);
-        System.out.println("[결과] handler.process() 완료");
 
-        // then - [수정] 핵심 값(status, pgTxId)만 Captor로 검증
+        // then
         ArgumentCaptor<PayStatus> statusCaptor = ArgumentCaptor.forClass(PayStatus.class);
         ArgumentCaptor<String> pgTxIdCaptor = ArgumentCaptor.forClass(String.class);
         then(paymentTxService).should().confirm(
@@ -94,8 +89,6 @@ class PaymentCommandHandlerTest {
         );
         assertThat(statusCaptor.getValue()).isEqualTo(PayStatus.SUCCESS);
         assertThat(pgTxIdCaptor.getValue()).isEqualTo("pg-tx-123");
-        System.out.println("[검증] ✅ 상태: " + statusCaptor.getValue()
-                + ", pgTxId: " + pgTxIdCaptor.getValue());
     }
 
     @Test
@@ -104,13 +97,11 @@ class PaymentCommandHandlerTest {
         // given
         EventEnvelope<PaymentRequestedCommand> envelope = makeEnvelope(PAYMENT_ID);
         given(paymentTxService.claim(PAYMENT_ID)).willReturn(true);
-        given(paymentClient.requestPayment(eq(PAYMENT_ID), anyInt(), any()))
+        given(paymentClient.requestPayment(any(PaymentRequestedCommand.class)))
                 .willThrow(new PgBusinessException(400, "카드 한도 초과"));
-        System.out.println("[테스트] PG 비즈니스 오류(4xx) 시나리오 - paymentId: " + PAYMENT_ID);
 
         // when
         handler.process(envelope);
-        System.out.println("[결과] handler.process() 완료 - 예외 전파 없음");
 
         // then
         ArgumentCaptor<PayStatus> statusCaptor = ArgumentCaptor.forClass(PayStatus.class);
@@ -121,8 +112,6 @@ class PaymentCommandHandlerTest {
         then(paymentTxService).should(never())
                 .handleTransientTx(any(), any(), any(), any(), any());
         assertThat(statusCaptor.getValue()).isEqualTo(PayStatus.FAILED);
-        System.out.println("[검증] ✅ 상태: " + statusCaptor.getValue()
-                + ", handleTransientTx 미호출 확인");
     }
 
     @Test
@@ -131,20 +120,17 @@ class PaymentCommandHandlerTest {
         // given
         EventEnvelope<PaymentRequestedCommand> envelope = makeEnvelope(PAYMENT_ID);
         given(paymentTxService.claim(PAYMENT_ID)).willReturn(true);
-        given(paymentClient.requestPayment(eq(PAYMENT_ID), anyInt(), any()))
+        given(paymentClient.requestPayment(any(PaymentRequestedCommand.class)))
                 .willThrow(new RuntimeException("connection timeout"));
-        System.out.println("[테스트] 일시적 오류(타임아웃) 시나리오 - paymentId: " + PAYMENT_ID);
 
         // when & then
         assertThatThrownBy(() -> handler.process(envelope))
                 .isInstanceOf(RuntimeException.class);
-        System.out.println("[결과] ✅ RuntimeException 재발생 확인 - Kafka 재시도 트리거");
 
         then(paymentTxService).should()
                 .handleTransientTx(eq(envelope.payload()), any(), any(), any(), any());
         then(paymentTxService).should(never())
                 .confirm(any(), any(), any(), any(), any(), any(), any(), any());
-        System.out.println("[검증] ✅ handleTransientTx 호출, confirm 미호출 확인");
     }
 
     private EventEnvelope<PaymentRequestedCommand> makeEnvelope(Long paymentId) {
