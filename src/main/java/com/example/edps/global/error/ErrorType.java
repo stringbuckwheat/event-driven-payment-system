@@ -27,10 +27,12 @@ public enum ErrorType {
     // 결제 관련
     PAYMENT_IN_PROGRESS("이미 진행중인 결제가 있어요"),
 
+    // 분산락
+    LOCK_ACQUISITION_FAILED("이미 처리 중인 요청이에요"),
+
     // DLQ
-    PAYMENT_NOT_REPROCESSABLE("PayStatus.READY가 아님"),
+    PAYMENT_NOT_REPROCESSABLE("이미 확정된 결제"),
     UNSUPPORTED_DLQ_TOPIC("적절한 DLQ TOPIC이 아님"),
-    DLQ_ALREADY_REPROCESSED("RLock 획득 실패 - 이미 재처리 중"),
 
     // JSON
     SERIALIZE_FAIL("직렬화 실패"),

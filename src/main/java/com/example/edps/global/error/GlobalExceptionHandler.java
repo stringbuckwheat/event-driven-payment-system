@@ -2,6 +2,7 @@ package com.example.edps.global.error;
 
 import com.example.edps.global.error.exception.BusinessException;
 import com.example.edps.global.error.exception.SoldOutException;
+import com.example.edps.global.lock.LockAcquisitionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +40,13 @@ public class GlobalExceptionHandler {
 
         ErrorResponse errorResponse = new ErrorResponse(ErrorType.BAD_PARAMETER, errorMessage);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    @ExceptionHandler(LockAcquisitionException.class)
+    public ResponseEntity<ErrorResponse> handleLockAcquisitionException(LockAcquisitionException e) {
+        // TODO details
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(ErrorType.LOCK_ACQUISITION_FAILED));
     }
 
     @ExceptionHandler(Exception.class)

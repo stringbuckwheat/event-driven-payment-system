@@ -15,15 +15,12 @@ import com.example.edps.infra.kafka.dlq.repository.PaymentDlqLogRepository;
 import com.example.edps.infra.kafka.message.EventEnvelope;
 import com.example.edps.infra.kafka.message.EventEnvelopeParser;
 import com.example.edps.infra.outbox.service.OutboxService;
+import com.example.edps.global.lock.DistributedLock;
 import io.opentelemetry.api.trace.Span;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -34,34 +31,17 @@ public class DlqReprocessService {
     private final PaymentResultTxService paymentResultTxService;
     private final OutboxService outboxService;
     private final EventEnvelopeParser eventEnvelopeParser;
-    private final RedissonClient redissonClient;
 
     /**
      * DLQ 실패 건 재처리
-     * Redisson 분산락으로 중복 재처리 방지
+     * 분산락으로 중복 재처리 방지 (락 획득 실패 시 LockAcquisitionException)
      * originalTopic으로 분기하여 적절한 재처리 수행
      *
      * @param dlqLogId PaymentDlqLog PK
      */
+    @DistributedLock(key = "'dlq-reprocess-' + #dlqLogId", throwOnFail = true)
     public void reprocess(Long dlqLogId) {
-        RLock lock = redissonClient.getLock("dlq-reprocess-" + dlqLogId);
-
-        // 락 획득
-        try {
-            // 즉시 락 획득, 30초 후 자동 해제
-            if (!lock.tryLock(0, 30, TimeUnit.SECONDS)) {
-                throw new BusinessException(ErrorType.DLQ_ALREADY_REPROCESSED, "dlqId=" + dlqLogId);
-            }
-        } catch (InterruptedException e) {
-            throw new BusinessException(ErrorType.DLQ_ALREADY_REPROCESSED, "dlqId=" + dlqLogId);
-        }
-
-        // 실제 재처리
-        try {
-            doReprocess(dlqLogId);
-        } finally {
-            lock.unlock();
-        }
+        doReprocess(dlqLogId);
     }
 
     @Transactional
@@ -71,7 +51,7 @@ public class DlqReprocessService {
 
         // 이미 재처리 완료된 건은 재처리 불가
         if (dlqLog.getReprocessStatus() == ReprocessStatus.REPROCESSED) {
-            throw new BusinessException(ErrorType.DLQ_ALREADY_REPROCESSED, "dlqLogId=" + dlqLogId);
+            throw new BusinessException(ErrorType.LOCK_ACQUISITION_FAILED, "dlqLogId=" + dlqLogId);
         }
 
         // 적절한 재처리 메소드 호출
