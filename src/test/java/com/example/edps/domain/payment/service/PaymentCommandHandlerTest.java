@@ -9,13 +9,17 @@ import com.example.edps.infra.kafka.handler.PaymentCommandHandler;
 import com.example.edps.infra.kafka.message.EventEnvelope;
 import com.example.edps.infra.pg.PaymentClient;
 import com.example.edps.infra.pg.dto.PgPaymentResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,7 +32,7 @@ import static org.mockito.Mockito.never;
  * PaymentCommandHandler 단위 테스트
  *
  * 검증 대상: "동일 Payment ID에 대해 단 하나의 워커만 PG 호출을 수행"
- * - claim 실패(이미 선점됨) → PG 호출 없음
+ * - Redis 락 획득 실패(이미 선점됨) → PG 호출 없음
  * - PG 성공        → SUCCESS 확정
  * - PG 비즈니스 오류 → FAILED 확정, 재시도 없음
  * - 일시적 오류    → Kafka 재시도를 위해 RuntimeException 재발생
@@ -36,101 +40,92 @@ import static org.mockito.Mockito.never;
 @ExtendWith(MockitoExtension.class)
 class PaymentCommandHandlerTest {
 
-    @Mock
-    private PaymentTxService paymentTxService;
+    @Mock private PaymentTxService paymentTxService;
+    @Mock private PaymentClient paymentClient;
+    @Mock private RedissonClient redissonClient;
+    @Mock private RLock lock;
 
-    @Mock
-    private PaymentClient paymentClient;
-
-    @InjectMocks
     private PaymentCommandHandler handler;
 
     private static final long PAYMENT_ID = 1L;
     private static final long ORDER_ID = 100L;
     private static final int AMOUNT = 10_000;
 
+    @BeforeEach
+    void setUp() {
+        handler = new PaymentCommandHandler(paymentTxService, paymentClient, redissonClient);
+        given(redissonClient.getLock("payment-claim-" + PAYMENT_ID)).willReturn(lock);
+    }
+
     @Test
-    @DisplayName("이미 선점된 결제는 PG를 호출하지 않는다")
-    void already_claimed_payment_skips_pg_call() {
-        // given
-        EventEnvelope<PaymentRequestedCommand> envelope = makeEnvelope(PAYMENT_ID);
-        given(paymentTxService.claim(PAYMENT_ID)).willReturn(false);
+    @DisplayName("Redis 락 획득 실패 시 PG를 호출하지 않는다")
+    void lock_acquisition_failure_skips_pg_call() throws InterruptedException {
+        given(lock.tryLock(0, 30, TimeUnit.SECONDS)).willReturn(false);
 
-        // when
-        handler.process(envelope);
+        handler.process(makeEnvelope(PAYMENT_ID));
 
-        // then
         then(paymentClient).shouldHaveNoInteractions();
-        // [수정] confirm + handleTransientTx 둘 다 미호출 명시적 검증
-        then(paymentTxService).should(never())
-                .confirm(any(), any(), any(), any(), any(), any(), any(), any());
-        then(paymentTxService).should(never())
-                .handleTransientTx(any(), any(), any(), any(), any());
+        then(paymentTxService).should(never()).confirm(any(), any(), any(), any(), any(), any(), any(), any());
+        then(paymentTxService).should(never()).handleTransientTx(any(), any(), any(), any(), any());
     }
 
     @Test
     @DisplayName("PG 승인 성공 시 SUCCESS 상태로 결제를 확정한다")
-    void pg_approval_success_confirms_payment_as_success() {
-        // given
-        EventEnvelope<PaymentRequestedCommand> envelope = makeEnvelope(PAYMENT_ID);
-        given(paymentTxService.claim(PAYMENT_ID)).willReturn(true);
+    void pg_approval_success_confirms_payment_as_success() throws InterruptedException {
+        given(lock.tryLock(0, 30, TimeUnit.SECONDS)).willReturn(true);
+        given(lock.isHeldByCurrentThread()).willReturn(true);
         given(paymentClient.requestPayment(any(PaymentRequestedCommand.class)))
                 .willReturn(new PgPaymentResponse("SUCCESS", "pg-tx-123", null));
 
-        // when
-        handler.process(envelope);
+        handler.process(makeEnvelope(PAYMENT_ID));
 
-        // then
         ArgumentCaptor<PayStatus> statusCaptor = ArgumentCaptor.forClass(PayStatus.class);
         ArgumentCaptor<String> pgTxIdCaptor = ArgumentCaptor.forClass(String.class);
         then(paymentTxService).should().confirm(
-                eq(envelope.payload()), any(), any(),
+                eq(makeEnvelope(PAYMENT_ID).payload()), any(), any(),
                 statusCaptor.capture(), pgTxIdCaptor.capture(), any(), any(), any()
         );
         assertThat(statusCaptor.getValue()).isEqualTo(PayStatus.SUCCESS);
         assertThat(pgTxIdCaptor.getValue()).isEqualTo("pg-tx-123");
+        then(lock).should().unlock();
     }
 
     @Test
     @DisplayName("PG 비즈니스 오류(4xx)는 재시도 없이 FAILED로 확정하고 예외를 전파하지 않는다")
-    void pg_business_error_confirms_payment_as_failed_without_retry() {
-        // given
-        EventEnvelope<PaymentRequestedCommand> envelope = makeEnvelope(PAYMENT_ID);
-        given(paymentTxService.claim(PAYMENT_ID)).willReturn(true);
+    void pg_business_error_confirms_payment_as_failed_without_retry() throws InterruptedException {
+        given(lock.tryLock(0, 30, TimeUnit.SECONDS)).willReturn(true);
+        given(lock.isHeldByCurrentThread()).willReturn(true);
         given(paymentClient.requestPayment(any(PaymentRequestedCommand.class)))
                 .willThrow(new PgBusinessException(400, "카드 한도 초과"));
 
-        // when
-        handler.process(envelope);
+        handler.process(makeEnvelope(PAYMENT_ID));
 
-        // then
         ArgumentCaptor<PayStatus> statusCaptor = ArgumentCaptor.forClass(PayStatus.class);
         then(paymentTxService).should().confirm(
-                eq(envelope.payload()), any(), any(),
+                eq(makeEnvelope(PAYMENT_ID).payload()), any(), any(),
                 statusCaptor.capture(), isNull(), any(), any(), any()
         );
-        then(paymentTxService).should(never())
-                .handleTransientTx(any(), any(), any(), any(), any());
+        then(paymentTxService).should(never()).handleTransientTx(any(), any(), any(), any(), any());
         assertThat(statusCaptor.getValue()).isEqualTo(PayStatus.FAILED);
+        then(lock).should().unlock();
     }
 
     @Test
     @DisplayName("일시적 오류는 handleTransientTx를 호출하고 Kafka 재시도를 위해 Exception을 던진다")
-    void transient_error_calls_handle_transient_and_rethrows_for_kafka_retry() {
-        // given
-        EventEnvelope<PaymentRequestedCommand> envelope = makeEnvelope(PAYMENT_ID);
-        given(paymentTxService.claim(PAYMENT_ID)).willReturn(true);
+    void transient_error_calls_handle_transient_and_rethrows_for_kafka_retry() throws InterruptedException {
+        given(lock.tryLock(0, 30, TimeUnit.SECONDS)).willReturn(true);
+        given(lock.isHeldByCurrentThread()).willReturn(true);
         given(paymentClient.requestPayment(any(PaymentRequestedCommand.class)))
                 .willThrow(new RuntimeException("connection timeout"));
 
-        // when & then
-        assertThatThrownBy(() -> handler.process(envelope))
+        assertThatThrownBy(() -> handler.process(makeEnvelope(PAYMENT_ID)))
                 .isInstanceOf(RuntimeException.class);
 
         then(paymentTxService).should()
-                .handleTransientTx(eq(envelope.payload()), any(), any(), any(), any());
+                .handleTransientTx(eq(makeEnvelope(PAYMENT_ID).payload()), any(), any(), any(), any());
         then(paymentTxService).should(never())
                 .confirm(any(), any(), any(), any(), any(), any(), any(), any());
+        then(lock).should().unlock();
     }
 
     private EventEnvelope<PaymentRequestedCommand> makeEnvelope(Long paymentId) {

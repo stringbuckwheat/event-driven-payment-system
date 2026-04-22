@@ -29,18 +29,6 @@ public class PaymentTxService {
     private final int maxAttempts = 5;
 
     /**
-     * 결제 선점(CAS)
-     * READY -> PROCESSING 성공하면 true, 다른 워커가 선점했거나 완료된 결제면 false
-     *
-     * @param paymentId 결제 ID
-     * @return 선점 성공 여부
-     */
-    @Transactional
-    public boolean claim(Long paymentId) {
-        return paymentRepository.transitionStatus(paymentId, PayStatus.READY, PayStatus.PROCESSING) == 1;
-    }
-
-    /**
      * 결제 결과 확정
      * PG 응답 기반으로 결제 상태 확정, PaymentLog 기록, Outbox 적재, ProcessedEvent 저장
      *
@@ -66,8 +54,8 @@ public class PaymentTxService {
         Payment payment = paymentRepository.findById(cmd.paymentId())
                 .orElseThrow(() -> new BusinessException(ErrorType.PAYMENT_NOT_FOUND, "paymentId=" + cmd.paymentId()));
 
-        // '결제중' 상태만 진행 가능
-        if (payment.getStatus() != PayStatus.PROCESSING) {
+        // 이미 확정된 결제면 skip
+        if (payment.getStatus() == PayStatus.SUCCESS || payment.getStatus() == PayStatus.FAILED) {
             log.info("이미 확정된 결제 - skip paymentId={}, status={}", cmd.paymentId(), payment.getStatus());
             return;
         }
@@ -106,7 +94,7 @@ public class PaymentTxService {
         Payment payment = paymentRepository.findById(cmd.paymentId())
                 .orElseThrow(() -> new BusinessException(ErrorType.PAYMENT_NOT_FOUND, "paymentId=" + cmd.paymentId()));
 
-        if (payment.getStatus() != PayStatus.PROCESSING) {
+        if (payment.getStatus() == PayStatus.SUCCESS || payment.getStatus() == PayStatus.FAILED) {
             log.info("이미 확정된 결제 - skip transient paymentId={}, status={}", cmd.paymentId(), payment.getStatus());
             return;
         }
@@ -119,7 +107,7 @@ public class PaymentTxService {
                         .attemptNo(attemptNo)
                         .requestedAt(requestedAt)
                         .respondedAt(respondedAt)
-                        .status(PayStatus.PROCESSING)
+                        .status(PayStatus.FAILED)
                         .failureReason("TRANSIENT: " + safeMsg(ex))
                         .build()
         );
@@ -129,9 +117,7 @@ public class PaymentTxService {
             return;
         }
 
-        // 다음 재시도를 위해 PROCESSING -> READY
-        paymentRepository.transitionStatus(cmd.paymentId(), PayStatus.PROCESSING, PayStatus.READY);
-
+        // Redis 락을 해제한 뒤 Kafka가 재전송하면 READY 상태에서 재처리됨
         log.warn("transient -> retry paymentId={}, attemptNo={}, err={}", cmd.paymentId(), attemptNo, safeMsg(ex));
     }
 

@@ -35,9 +35,8 @@ import static org.mockito.Mockito.never;
  * PaymentTxService 단위 테스트
  *
  * 검증 대상:
- * - claim(): CAS 결과를 올바르게 반환하는지
- * - confirm(): PROCESSING 상태일 때만 확정, 토픽 라우팅, Payment not found 예외
- * - handleTransientTx(): maxAttempts 미만이면 READY로 복원, maxAttempts 이상이면 FAILED 확정
+ * - confirm(): 이미 확정된 결제는 skip, 토픽 라우팅, Payment not found 예외
+ * - handleTransientTx(): maxAttempts 미만이면 Kafka 재전송 유도, maxAttempts 이상이면 FAILED 확정
  */
 @ExtendWith(MockitoExtension.class)
 class PaymentTxServiceTest {
@@ -52,30 +51,12 @@ class PaymentTxServiceTest {
     private static final long ORDER_ID = 100L;
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 4, 17, 12, 0);
 
-    // ===== claim =====
-
-    @Test
-    @DisplayName("transitionStatus가 1을 반환하면 claim()은 true를 반환한다")
-    void claim_returns_true_when_transition_succeeds() {
-        given(paymentRepository.transitionStatus(PAYMENT_ID, PayStatus.READY, PayStatus.PROCESSING)).willReturn(1);
-
-        assertThat(paymentTxService.claim(PAYMENT_ID)).isTrue();
-    }
-
-    @Test
-    @DisplayName("transitionStatus가 0을 반환하면 claim()은 false를 반환한다")
-    void claim_returns_false_when_already_claimed_or_completed() {
-        given(paymentRepository.transitionStatus(PAYMENT_ID, PayStatus.READY, PayStatus.PROCESSING)).willReturn(0);
-
-        assertThat(paymentTxService.claim(PAYMENT_ID)).isFalse();
-    }
-
     // ===== confirm =====
 
     @Test
-    @DisplayName("PROCESSING 상태 결제를 SUCCESS로 확정하면 succeeded 토픽으로 Outbox가 저장된다")
+    @DisplayName("READY 상태 결제를 SUCCESS로 확정하면 succeeded 토픽으로 Outbox가 저장된다")
     void confirm_success_routes_to_succeeded_topic() {
-        Payment payment = makePayment(PayStatus.PROCESSING);
+        Payment payment = makePayment(PayStatus.READY);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
         given(paymentLogRepository.countByPaymentId(PAYMENT_ID)).willReturn(0L);
 
@@ -91,9 +72,9 @@ class PaymentTxServiceTest {
     }
 
     @Test
-    @DisplayName("PROCESSING 상태 결제를 FAILED로 확정하면 failed 토픽으로 Outbox가 저장된다")
+    @DisplayName("READY 상태 결제를 FAILED로 확정하면 failed 토픽으로 Outbox가 저장된다")
     void confirm_failure_routes_to_failed_topic() {
-        Payment payment = makePayment(PayStatus.PROCESSING);
+        Payment payment = makePayment(PayStatus.READY);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
         given(paymentLogRepository.countByPaymentId(PAYMENT_ID)).willReturn(0L);
 
@@ -108,8 +89,8 @@ class PaymentTxServiceTest {
     }
 
     @Test
-    @DisplayName("이미 확정된(PROCESSING 아닌) 결제는 confirm()이 아무것도 하지 않는다")
-    void confirm_skips_when_payment_is_not_processing() {
+    @DisplayName("이미 확정된 결제는 confirm()이 아무것도 하지 않는다")
+    void confirm_skips_when_payment_is_already_finalized() {
         Payment payment = makePayment(PayStatus.SUCCESS);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
 
@@ -136,7 +117,7 @@ class PaymentTxServiceTest {
     @Test
     @DisplayName("attemptNo는 기존 PaymentLog 수 + 1이다")
     void confirm_attempt_no_is_existing_log_count_plus_one() {
-        Payment payment = makePayment(PayStatus.PROCESSING);
+        Payment payment = makePayment(PayStatus.READY);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
         given(paymentLogRepository.countByPaymentId(PAYMENT_ID)).willReturn(2L); // 이미 2번 시도
 
@@ -151,27 +132,26 @@ class PaymentTxServiceTest {
     // ===== handleTransientTx =====
 
     @Test
-    @DisplayName("maxAttempts(5) 미만이면 PROCESSING → READY로 전환해 재시도를 유도한다")
-    void transient_resets_to_ready_when_under_max_attempts() {
-        Payment payment = makePayment(PayStatus.PROCESSING);
+    @DisplayName("maxAttempts(5) 미만이면 FAILED 로그를 남기고 Kafka 재전송을 유도한다")
+    void transient_logs_and_allows_retry_when_under_max_attempts() {
+        Payment payment = makePayment(PayStatus.READY);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
         given(paymentLogRepository.countByPaymentId(PAYMENT_ID)).willReturn(1L); // 2번째 시도
 
         paymentTxService.handleTransientTx(makeCmd(), "trace-1", "evt-1",
                 NOW, new RuntimeException("connection timeout"));
 
-        then(paymentRepository).should()
-                .transitionStatus(PAYMENT_ID, PayStatus.PROCESSING, PayStatus.READY);
         then(outboxService).shouldHaveNoInteractions();
         assertThat(payment.getPaymentLogs()).hasSize(1);
         assertThat(payment.getPaymentLogs().get(0).getFailureReason())
                 .startsWith("TRANSIENT:");
+        assertThat(payment.getPaymentLogs().get(0).getStatus()).isEqualTo(PayStatus.FAILED);
     }
 
     @Test
     @DisplayName("5번째 시도(maxAttempts 도달)에서는 FAILED로 확정하고 failed 토픽에 Outbox를 저장한다")
     void transient_exhausts_and_fails_payment_at_max_attempts() {
-        Payment payment = makePayment(PayStatus.PROCESSING);
+        Payment payment = makePayment(PayStatus.READY);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
         given(paymentLogRepository.countByPaymentId(PAYMENT_ID)).willReturn(4L); // 5번째 시도
 
@@ -183,14 +163,11 @@ class PaymentTxServiceTest {
         then(outboxService).should().save(topicCaptor.capture(), any(), any());
         assertThat(topicCaptor.getValue()).isEqualTo(KafkaTopics.PAYMENT_EVENT_FAILED);
         assertThat(payment.getStatus()).isEqualTo(PayStatus.FAILED);
-        // READY로 복원하는 transitionStatus는 호출되지 않아야 함
-        then(paymentRepository).should(never())
-                .transitionStatus(PAYMENT_ID, PayStatus.PROCESSING, PayStatus.READY);
     }
 
     @Test
-    @DisplayName("이미 확정된(PROCESSING 아닌) 결제는 handleTransientTx가 아무것도 하지 않는다")
-    void transient_skips_when_payment_is_not_processing() {
+    @DisplayName("이미 확정된 결제는 handleTransientTx가 아무것도 하지 않는다")
+    void transient_skips_when_payment_is_already_finalized() {
         Payment payment = makePayment(PayStatus.SUCCESS);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
 
@@ -217,7 +194,7 @@ class PaymentTxServiceTest {
     @Test
     @DisplayName("예외 메시지가 null이면 클래스 이름을 failureReason에 기록한다")
     void transient_uses_class_name_when_exception_message_is_null() {
-        Payment payment = makePayment(PayStatus.PROCESSING);
+        Payment payment = makePayment(PayStatus.READY);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
         given(paymentLogRepository.countByPaymentId(PAYMENT_ID)).willReturn(0L);
 
@@ -231,7 +208,7 @@ class PaymentTxServiceTest {
     @Test
     @DisplayName("300자 초과 예외 메시지는 300자로 잘린다")
     void transient_truncates_exception_message_longer_than_300_chars() {
-        Payment payment = makePayment(PayStatus.PROCESSING);
+        Payment payment = makePayment(PayStatus.READY);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(payment));
         given(paymentLogRepository.countByPaymentId(PAYMENT_ID)).willReturn(0L);
 

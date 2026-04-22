@@ -101,9 +101,7 @@ public class DlqReprocessService {
 
     /**
      * PAYMENT_COMMAND_REQUESTED 재처리
-     * PaymentStatus.READY인 경우에만 재발행 가능
-     * - PROCESSING: 워커가 처리 중이거나 PaymentStuckRecoveryJob이 처리할 케이스 → 재처리 불가
-     * - FAILED: 이미 확정된 케이스 → 재처리 불필요
+     * 이미 확정된(SUCCESS/FAILED) 결제는 재처리 불가
      *
      * @param dlqLog DLQ 로그
      */
@@ -111,8 +109,8 @@ public class DlqReprocessService {
         Payment payment = paymentRepository.findById(dlqLog.getPaymentId())
                 .orElseThrow(() -> new BusinessException(ErrorType.PAYMENT_NOT_FOUND, "paymentId=" + dlqLog.getPaymentId()));
 
-        // PaymentStatus.READY가 아닌 경우
-        if (payment.getStatus() != PayStatus.READY) {
+        // 이미 확정된 결제는 재처리 불가
+        if (payment.getStatus() == PayStatus.SUCCESS || payment.getStatus() == PayStatus.FAILED) {
             throw new BusinessException(ErrorType.PAYMENT_NOT_REPROCESSABLE,
                     "paymentId=" + dlqLog.getPaymentId() + ", status=" + payment.getStatus());
         }
