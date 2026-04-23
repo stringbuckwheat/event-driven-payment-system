@@ -32,15 +32,11 @@ partition "TX1" {
 
 :CDC → Kafka 발행; <<#D0E8FF>>
 
-partition "TX2" {
-    :결제 선점(claim); <<#D4EDDA>>
-}
-
-if (결제 선점 성공?) then (yes)
+if (결제 선점 성공?\n(Redisson 분산락 획득)) then (yes)
     :PG 호출\n(트랜잭션 없음); <<#D4EDDA>>
     if (PG결과) then (성공)
-        partition "TX3" {
-            :결제 확정 · Outbox 적재; <<#D4EDDA>>
+        partition "TX2" {
+            :결제 확정\nOutbox 적재; <<#D4EDDA>>
         }
     else (실패)
         :재시도 / 실패 확정; <<#FFE8CC>>
@@ -54,7 +50,7 @@ endif
 
 :CDC → Kafka 발행; <<#D0E8FF>>
 
-partition "TX4" {
+partition "TX3" {
     :완료된 이벤트 멱등성 체크; <<#D4EDDA>>
     if (결제 성공?) then (yes)
         :주문 완료\n장바구니 삭제; <<#D4EDDA>>

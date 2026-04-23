@@ -17,7 +17,7 @@ Kafka를 활용한 **이벤트 기반 비동기 결제 시스템**입니다.
 - **비동기 결제 파이프라인** — Kafka 기반으로 주문 ~ 결제 ~ 후처리를 이벤트로 연결
 - **트랜잭션 경계 분리** — PG 호출을 트랜잭션 밖으로 분리해 DB 커넥션 점유와 락 확산 방지
 - **Outbox + CDC** — DB 커밋과 Kafka 발행을 원자적으로 처리해 메시지 유실 방지
-- **동시성 제어 및 멱등성 보장** — Redis 분산락, ProcessedEvent 테이블 등 레이어별 중복 방지
+- **동시성 제어 및 멱등성 보장** — Redis 분산락, 완료 이벤트 추적 테이블로 레이어별 중복 방지
 - **DLQ + 재처리 API** — 실패 감지(Slack 알람), 이력 저장, 운영자 수동 재처리까지 완성된 운영 체계
 
 <br>
@@ -29,7 +29,6 @@ Kafka를 활용한 **이벤트 기반 비동기 결제 시스템**입니다.
 ### 인덱스 설계
 | 테이블 | 인덱스 | 목적                   |
 |--------|--------|----------------------|
-| payment | (status, updated_at) | 장기 미처리 결제 복구 스케줄러 조회 |
 | orders | (user_id, created_at) | 유저별 최신 주문 목록 조회      |
 | payment_dlq_log | (payment_id, reprocess_status) | 재처리 대상 조회            |
 | outbox_event | event_id UNIQUE | 중복 발행 방지             |
@@ -62,9 +61,20 @@ TX3 | O | 주문 상태 업데이트, 장바구니 삭제 / 재고 롤백
 
 ## 🔒 동시성 제어 및 멱등성 보장
 
-### 🔐 Redis 분산 락 — DLQ 재처리 선점
+### 🔐 Redis 분산락 — 결제 선점 및 DLQ 재처리 선점
 
-결제가 중복으로 처리되거나 운영자가 동일 DLQ 건을 동시에 재처리 요청하는 케이스를 방지합니다.
+- **중복 결제**나 **DLQ 재처리 엔드포인트 중복 호출**을 방지합니다.
+- `@DistributedLock` 어노테이션과 AOP로 구현해 락 로직을 비즈니스 코드와 분리했습니다. 
+- 동시성 제어는 Redis가 담당하고 DB는 데이터 저장에만 집중합니다.
+
+```java
+@DistributedLock(
+    key = "'dlq-reprocess-' + #dlqId",
+    leaseTime = 30,   // 서버 장애 시 자동 해제
+    throwOnFail = true
+)
+public void reprocess(Long dlqId) { ... }
+```
 
 ```
 lock.tryLock(
@@ -73,7 +83,6 @@ lock.tryLock(
     TimeUnit.SECONDS
 );
 ```
-
 
 ### 🔁 ProcessedEvent 테이블 — 컨슈머 멱등성
 
