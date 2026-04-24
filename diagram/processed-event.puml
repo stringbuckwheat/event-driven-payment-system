@@ -1,0 +1,14 @@
+@startuml
+start
+:Kafka 메시지 수신\n(eventId: abc123);
+
+if (ProcessedEvent에\n이미 존재?) then (yes)
+  : 중복 → skip; <<#F7C1C1>>
+  stop
+else (no)
+  :비즈니스 로직 처리; <<#9FE1CB>>
+  :ProcessedEvent에\neventId 저장 (UNIQUE); <<#9FE1CB>>
+  stop
+endif
+
+@enduml

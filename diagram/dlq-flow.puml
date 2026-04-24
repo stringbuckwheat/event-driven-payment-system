@@ -1,5 +1,4 @@
 @startuml
-skinparam backgroundColor #FAFAFA
 skinparam activityBorderColor #888888
 skinparam activityBackgroundColor #FFFFFF
 skinparam arrowColor #444444
@@ -12,57 +11,35 @@ skinparam partition {
     FontStyle bold
 }
 
-skinparam diamond {
-    BackgroundColor #FFF9E6
-    BorderColor #E6A817
-}
-
 skinparam note {
     BackgroundColor #FFF3CD
     BorderColor #E6A817
 }
 
 start
-
-:Kafka 재시도 5회 소진; <<#FFD6D6>>
+:PG 호출;
+if (결제 성공?) then (no)
+    if (실패 유형?) then (비즈니스\n잔액부족/카드거절)
+        :즉시 실패; <<#FFD6D6>>
+        stop
+    else (Transient\n네트워크/타임아웃)
+        :재시도; <<#FFE8CC>>
+        if (재시도 5회 소진?) then (yes)
+        else (no)
+            stop
+        endif
+    endif
+else (yes)
+    if (결제 후처리 실패?) then (no)
+        stop
+    endif
+    note left: 주문상태 업데이트\n장바구니 삭제/재고 롤백
+endif
 
 partition "DLQ 수신" {
     :PaymentDlqLog 저장; <<#FFD6D6>>
     :Slack 알람 발송; <<#FFD6D6>>
 }
-
-:운영자 확인; <<#FFE8CC>>
-
-if (재처리 엔트포인트 요청?) then (yes)
-    :Redisson 분산락 획득; <<#D0E8FF>>
-
-    if (topic?) then (결제 요청 DLQ)
-        if (결제 시도 전?) then (yes)
-            :Outbox 재적재\n→결제 재시도; <<#D4EDDA>>
-            :재처리 완료 기록; <<#D4EDDA>>
-
-        else (no)
-            :재처리 X; <<#E8E8E8>>
-            note right
-                **처리 중인 경우**
-                스케줄러(StuckRecoveryJob)가
-                2분 후 자동 실패 처리
-
-                **이미 실패 확정된 경우**
-                재처리 불필요
-            end note
-            stop
-        endif
-    else (결제 후처리 DLQ)
-        :주문 상태 업데이트 재시도\n(중복 처리 방지 적용); <<#D4EDDA>>
-        :재처리 완료 기록; <<#D4EDDA>>
-    endif
-
-else (no)
-    :수동 대응; <<#E8E8E8>>
-    stop
-endif
-
 stop
 
 @enduml

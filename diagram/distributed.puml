@@ -1,0 +1,23 @@
+@startuml
+concise "워커 A" as A
+concise "워커 B" as B
+concise "Redis 락" as R
+
+@0
+A is 결제요청
+B is 결제요청
+R is 미점유
+
+@1
+A is 락획득
+R is A점유
+
+@2
+B is skip
+A is PG호출
+
+@4
+A is 완료
+R is 미점유
+
+@enduml
