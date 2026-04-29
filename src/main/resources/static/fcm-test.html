@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>FCM Push Notification Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; max-width: 700px; }
+        input { width: 200px; padding: 4px; }
+        button { padding: 8px 16px; cursor: pointer; margin-top: 8px; }
+        pre { background: #f4f4f4; padding: 12px; border-radius: 4px; white-space: pre-wrap; min-height: 80px; }
+        .ok { color: green; }
+        .err { color: red; }
+    </style>
+</head>
+<body>
+<h2>FCM Push Notification Test</h2>
+
+<p>
+    UserId: <input id="userId" type="text" value="user1"/>
+</p>
+<button onclick="registerToken()">1. 알림 권한 요청 및 FCM 토큰 등록</button>
+
+<h3>로그</h3>
+<pre id="log"></pre>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
+<script>
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB0roGGhjnsGX9-PWa6-GiLBFH8xW-hHkg",
+      authDomain: "edps-d865a.firebaseapp.com",
+      projectId: "edps-d865a",
+      storageBucket: "edps-d865a.firebasestorage.app",
+      messagingSenderId: "538962144191",
+      appId: "1:538962144191:web:53f7dc6f0a9c3ea84a0f0a"
+    };
+
+
+        const VAPID_KEY = "BOtkIOvgnTUqB5I1ytIJhordLpe-QflSSLQq7Gj7TMODVbt5HPWUMAI42HFTFBfdB7w694NQcXZaIIcLWcUmCwE";
+
+        firebase.initializeApp(firebaseConfig);
+        const messaging = firebase.messaging();
+
+        function log(msg, cls) {
+            const pre = document.getElementById('log');
+            const line = document.createElement('span');
+            if (cls) line.className = cls;
+            line.textContent = new Date().toLocaleTimeString() + '  ' + msg + '\n';
+            pre.appendChild(line);
+        }
+
+        async function registerToken() {
+            console.log('register token clicked');
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    log('알림 권한 거부됨', 'err');
+                    return;
+                }
+                log('알림 권한 허용됨');
+
+                const token = await messaging.getToken({ vapidKey: VAPID_KEY });
+                log('FCM Token: ' + token);
+
+                const userId = document.getElementById('userId').value.trim();
+                const resp = await fetch('/devices/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-USER-ID': userId
+                    },
+                    body: JSON.stringify({ fcmToken: token })
+                });
+
+                if (resp.ok) {
+                    log('서버 토큰 등록 완료 (userId=' + userId + ')', 'ok');
+                    log('이제 주문 API를 호출하면 이 탭에 알림이 표시됩니다.');
+                } else {
+                    log('서버 등록 실패: HTTP ' + resp.status, 'err');
+                }
+            } catch (e) {
+                log('오류: ' + e.message, 'err');
+            }
+        }
+
+        messaging.onMessage((payload) => {
+            console.log('포그라운드 메시지', payload);
+            const title = payload.data.title;
+            const body = payload.data.body;
+            log('[알림 수신] ' + title + ' — ' + body, 'ok');
+            new Notification(title, { body: body });
+        });
+</script>
+</body>
+</html>

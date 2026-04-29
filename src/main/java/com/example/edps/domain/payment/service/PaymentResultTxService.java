@@ -4,6 +4,7 @@ import com.example.edps.domain.cart.repository.CartRepository;
 import com.example.edps.domain.order.entity.Order;
 import com.example.edps.domain.order.repository.OrderRepository;
 import com.example.edps.domain.payment.event.PaymentCompletedEvent;
+import com.example.edps.domain.payment.event.PaymentSuccessEvent;
 import com.example.edps.domain.product.repository.ProductRepository;
 import com.example.edps.global.error.ErrorType;
 import com.example.edps.global.error.exception.BusinessException;
@@ -11,6 +12,7 @@ import com.example.edps.infra.processedevent.ProcessedEvent;
 import com.example.edps.infra.processedevent.ProcessedEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ public class PaymentResultTxService {
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
     private final ProcessedEventRepository processedEventRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 결제 성공 후처리
@@ -40,6 +43,9 @@ public class PaymentResultTxService {
         clearCart(order); // 카트 비우기
 
         processedEventRepository.save(new ProcessedEvent(eventId));
+
+        // TODO 분리
+        eventPublisher.publishEvent(new PaymentSuccessEvent(order.getUserId(), order.getId(), order.getTotal()));
         log.info("결제 성공 처리 완료 orderId={}, paymentId={}", event.orderId(), event.paymentId());
     }
 
